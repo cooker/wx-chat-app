@@ -646,7 +646,8 @@ loadCustomTemplates()
 }
 
 .paged-grid-body {
-  min-height: 430px;
+  height: 430px;
+  overflow: auto;
 }
 
 .quick-manager-panel .image-card {

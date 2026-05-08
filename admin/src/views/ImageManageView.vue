@@ -75,7 +75,7 @@ const {
 
 <style scoped>
 .event-table-body {
-  min-height: 540px;
+  height: 540px;
   overflow: auto;
 }
 </style>
