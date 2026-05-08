@@ -41,6 +41,12 @@ public class AdminAuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
+        // Only protect backend APIs; static pages/resources should be publicly accessible.
+        if (!path.startsWith("/api/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (isPublic(path, method)) {
             filterChain.doFilter(request, response);
             return;

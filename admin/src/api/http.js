@@ -6,9 +6,13 @@ const http = axios.create({
 
 function redirectToLogin() {
   sessionStorage.removeItem('adminToken')
-  const path = window.location.pathname
-  if (!path.startsWith('/login')) {
-    window.location.replace(`/login?redirect=${encodeURIComponent(path + window.location.search)}`)
+  const base = import.meta.env.BASE_URL || '/'
+  const basePrefix = base === '/' ? '' : base.replace(/\/$/, '')
+  const currentPath = window.location.pathname
+  const relativePath =
+    basePrefix && currentPath.startsWith(basePrefix) ? currentPath.slice(basePrefix.length) || '/' : currentPath
+  if (!relativePath.startsWith('/login')) {
+    window.location.replace(`${base}login?redirect=${encodeURIComponent(relativePath + window.location.search)}`)
   }
 }
 
