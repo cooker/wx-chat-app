@@ -1,0 +1,4 @@
+@import './styles/base.css';
+@import './modules/dashboard/styles.css';
+@import './modules/image/styles.css';
+@import './modules/auth/styles/login.css';

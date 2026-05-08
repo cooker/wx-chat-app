@@ -1,0 +1,8 @@
+.idea/
+backend/target/
+backend/wx-chat.db
+wx-chat.db
+client/node_modules/
+client/dist/
+admin/node_modules/
+admin/dist/

@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: wx-chat-backend
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:./wx-chat.db
+  sql:
+    init:
+      mode: always
+      # SQLite: ALTER below may repeat columns already created on fresh DB; ignore duplicates only.
+      continue-on-error: true
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+server:
+  port: 8080
+
+app:
+  upload-dir: ./uploads
+  album-image-dir: ./uploads/albums
+  admin:
+    auth-enabled: true
+    password: ${ADMIN_PASSWORD:admin123}

@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: "jdbc:sqlite::memory:"
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
+
+app:
+  admin:
+    auth-enabled: false

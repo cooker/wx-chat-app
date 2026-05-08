@@ -1,0 +1,50 @@
+.feed-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.feed-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 14px;
+  min-height: 36px;
+}
+
+.feed-header h1 {
+  grid-column: 2;
+  font-size: 24px;
+  margin: 0;
+  color: #f8fafc;
+  text-align: center;
+}
+
+.feed-header button {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.waterfall-container {
+  height: 78vh;
+  min-height: 480px;
+  margin-top: 8px;
+  overflow: auto;
+  border-radius: 8px;
+}
+
+@media (max-width: 960px) {
+  .waterfall-container {
+    min-height: 430px;
+  }
+}
+
+@media (max-width: 640px) {
+  .feed-page {
+    padding: 8px;
+  }
+
+  .waterfall-container {
+    min-height: 380px;
+  }
+}

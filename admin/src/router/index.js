@@ -1,0 +1,50 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import LoginView from '../views/LoginView.vue'
+import ImageManageView from '../views/ImageManageView.vue'
+import AlbumManageView from '../views/AlbumManageView.vue'
+import IpPortraitToolView from '../views/IpPortraitToolView.vue'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView,
+      meta: { public: true }
+    },
+    {
+      path: '/',
+      name: 'image-manage',
+      component: ImageManageView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/albums',
+      name: 'album-manage',
+      component: AlbumManageView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/tools/ip-portrait',
+      name: 'ip-portrait-tool',
+      component: IpPortraitToolView,
+      meta: { requiresAuth: true }
+    }
+  ]
+})
+
+router.beforeEach((to) => {
+  if (to.meta.public) {
+    if (to.name === 'login' && sessionStorage.getItem('adminToken')) {
+      return { path: '/' }
+    }
+    return true
+  }
+  if (to.meta.requiresAuth && !sessionStorage.getItem('adminToken')) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  return true
+})
+
+export default router

@@ -1,0 +1,83 @@
+.album-viewer {
+  min-height: 74vh;
+  background: #0d1117;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.viewer-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.back-btn {
+  white-space: nowrap;
+}
+
+.viewer-title h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+}
+
+.viewer-swiper {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.preview-image {
+  width: 100%;
+  max-height: 76vh;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #1f2937;
+}
+
+.preview-loading {
+  margin: 0 0 10px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.viewer-description {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #111827;
+  color: #dbe4f0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.markdown-body :first-child {
+  margin-top: 0;
+}
+
+.markdown-body :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  margin: 0.8em 0 0.4em;
+  color: #f8fafc;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote {
+  margin: 0.6em 0;
+}
+
+.markdown-body code {
+  background: #0b1220;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}

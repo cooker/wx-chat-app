@@ -1,0 +1,15 @@
+.error {
+  color: #dc2626;
+}
+
+.error-wrap,
+.empty {
+  margin-top: 12px;
+}
+
+.feed-status {
+  margin-top: 10px;
+  text-align: center;
+  color: #cbd5e1;
+  font-size: 13px;
+}
