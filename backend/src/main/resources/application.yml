@@ -15,7 +15,7 @@ mybatis:
     map-underscore-to-camel-case: true
 
 server:
-  port: 8080
+  port: 8384
 
 app:
   upload-dir: ./uploads
