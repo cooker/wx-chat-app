@@ -8,6 +8,9 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import { fetchAlbumDetail, updateAlbum, uploadAlbumImage } from '../modules/album/api/albumApi'
 
 const {
   loading,
@@ -44,8 +47,16 @@ const customTemplateName = ref('')
 const customTemplates = ref([])
 const TEMPLATE_STORAGE_KEY = 'albumMarkdownTemplates'
 const subImagePage = ref(1)
-const subImagePageSize = 8
+const subImagePageSize = 15
 const editorVisible = ref(false)
+const activeAlbumId = ref(null)
+const quickAlbumLoading = ref(false)
+const quickAlbumError = ref('')
+const quickAlbumDetail = ref(null)
+const quickSubImagePage = ref(1)
+const quickSubImagePageSize = 15
+const quickAppendInputRef = ref(null)
+const quickUploading = ref(false)
 
 const markdownTemplates = [
   {
@@ -112,6 +123,15 @@ const hasSubImageNextPage = computed(() => subImagePage.value < subImageTotalPag
 const pagedUploadedImages = computed(() => {
   const start = (subImagePage.value - 1) * subImagePageSize
   return uploadedImages.value.slice(start, start + subImagePageSize)
+})
+const quickSubImageTotal = computed(() => quickAlbumDetail.value?.images?.length ?? 0)
+const quickSubImageTotalPages = computed(() => Math.max(1, Math.ceil(quickSubImageTotal.value / quickSubImagePageSize)))
+const hasQuickSubImagePrevPage = computed(() => quickSubImagePage.value > 1)
+const hasQuickSubImageNextPage = computed(() => quickSubImagePage.value < quickSubImageTotalPages.value)
+const quickPagedImages = computed(() => {
+  const images = quickAlbumDetail.value?.images ?? []
+  const start = (quickSubImagePage.value - 1) * quickSubImagePageSize
+  return images.slice(start, start + quickSubImagePageSize)
 })
 
 const loadCustomTemplates = () => {
@@ -244,6 +264,82 @@ const submitEditor = async () => {
   }
 }
 
+const loadQuickAlbum = async (albumId) => {
+  quickAlbumLoading.value = true
+  quickAlbumError.value = ''
+  try {
+    const { data } = await fetchAlbumDetail(albumId)
+    quickAlbumDetail.value = data?.data ?? null
+    quickSubImagePage.value = 1
+  } catch (err) {
+    quickAlbumError.value = err?.message ?? '加载子图失败'
+  } finally {
+    quickAlbumLoading.value = false
+  }
+}
+
+const onAlbumRowClick = async ({ data }) => {
+  if (!data?.id) return
+  activeAlbumId.value = data.id
+  await loadQuickAlbum(data.id)
+}
+
+const selectQuickCover = (url) => {
+  if (!quickAlbumDetail.value) return
+  quickAlbumDetail.value = {
+    ...quickAlbumDetail.value,
+    coverUrl: url
+  }
+}
+
+const saveQuickCover = async () => {
+  if (!quickAlbumDetail.value) return
+  quickAlbumError.value = ''
+  try {
+    const detail = quickAlbumDetail.value
+    await updateAlbum(detail.id, {
+      title: detail.title,
+      description: detail.description,
+      coverUrl: detail.coverUrl || '',
+      imageFolder: detail.imageFolder || ''
+    })
+    await loadAlbums(page.value)
+  } catch (err) {
+    quickAlbumError.value = err?.message ?? '保存封面失败'
+  }
+}
+
+const prevQuickSubImagePage = () => {
+  if (hasQuickSubImagePrevPage.value) quickSubImagePage.value -= 1
+}
+
+const nextQuickSubImagePage = () => {
+  if (hasQuickSubImageNextPage.value) quickSubImagePage.value += 1
+}
+
+const openQuickUploadDialog = () => {
+  quickAppendInputRef.value?.click()
+}
+
+const onQuickUploadChange = async (event) => {
+  const files = Array.from(event.target.files ?? [])
+  event.target.value = ''
+  if (!quickAlbumDetail.value || files.length === 0) return
+  quickUploading.value = true
+  quickAlbumError.value = ''
+  try {
+    for (const file of files) {
+      await uploadAlbumImage(file, quickAlbumDetail.value.imageFolder)
+    }
+    await loadQuickAlbum(quickAlbumDetail.value.id)
+    await loadAlbums(page.value)
+  } catch (err) {
+    quickAlbumError.value = err?.message ?? '批量上传失败'
+  } finally {
+    quickUploading.value = false
+  }
+}
+
 watch(
   () => uploadedImages.value.length,
   () => {
@@ -264,39 +360,40 @@ loadCustomTemplates()
           <h2>相册列表</h2>
           <Button label="新建相册" icon="pi pi-plus" @click="openCreateEditor" />
         </div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>封面</th>
-              <th>标题</th>
-              <th>描述</th>
-              <th>图片数</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="album in albums" :key="album.id">
-              <td>{{ album.id }}</td>
-              <td>
-                <AuthImage
-                  v-if="album.coverUrl"
-                  class="thumb"
-                  :src="toAssetUrl(album.coverUrl)"
-                  :alt="album.title || 'cover'"
-                />
-                <span v-else>-</span>
-              </td>
-              <td>{{ album.title }}</td>
-              <td>{{ album.description }}</td>
-              <td>{{ album.imageCount }}</td>
-              <td class="ops">
-                <Button label="编辑" text size="small" icon="pi pi-pencil" @click="openEditEditor(album.id)" />
-                <Button label="删除" text severity="danger" size="small" icon="pi pi-trash" @click="removeAlbum(album.id)" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <DataTable
+          :value="albums"
+          data-key="id"
+          striped-rows
+          size="small"
+          scrollable
+          scroll-height="560px"
+          :row-class="(rowData) => (rowData.id === activeAlbumId ? 'album-row-active' : '')"
+          @row-click="onAlbumRowClick"
+        >
+          <Column field="id" header="ID" />
+          <Column header="封面">
+            <template #body="{ data }">
+              <AuthImage
+                v-if="data.coverUrl"
+                class="album-cover-thumb"
+                :src="toAssetUrl(data.coverUrl)"
+                :alt="data.title || 'cover'"
+              />
+              <span v-else>-</span>
+            </template>
+          </Column>
+          <Column field="title" header="标题" />
+          <Column field="description" header="描述" />
+          <Column field="imageCount" header="图片数" />
+          <Column header="操作">
+            <template #body="{ data }">
+              <div class="ops">
+                <Button label="编辑" text size="small" icon="pi pi-pencil" @click="openEditEditor(data.id)" />
+                <Button label="删除" text severity="danger" size="small" icon="pi pi-trash" @click="removeAlbum(data.id)" />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
         <div class="pagination-bar">
           <p>共 {{ total }} 条 · 第 {{ page }} / {{ totalPages }} 页</p>
           <div class="ops">
@@ -305,7 +402,68 @@ loadCustomTemplates()
           </div>
         </div>
       </article>
+
     </section>
+
+    <article v-if="quickAlbumDetail || quickAlbumLoading || quickAlbumError" class="panel quick-manager-panel">
+      <div class="panel-header">
+        <h2>子图快速管理</h2>
+        <div class="ops">
+          <Button
+            v-if="quickAlbumDetail"
+            label="批量上传子图"
+            icon="pi pi-upload"
+            :loading="quickUploading"
+            @click="openQuickUploadDialog"
+          />
+          <Button
+            v-if="quickAlbumDetail"
+            label="进入编辑弹窗"
+            text
+            icon="pi pi-external-link"
+            @click="openEditEditor(quickAlbumDetail.id)"
+          />
+          <input
+            ref="quickAppendInputRef"
+            class="hidden-file-input"
+            type="file"
+            accept="image/*"
+            multiple
+            @change="onQuickUploadChange"
+          />
+        </div>
+      </div>
+      <p v-if="quickAlbumLoading">加载中...</p>
+      <p v-else-if="quickAlbumError" class="error">{{ quickAlbumError }}</p>
+      <template v-else-if="quickAlbumDetail">
+        <p>当前相册：{{ quickAlbumDetail.title }}（{{ quickSubImageTotal }} 张）</p>
+        <div class="paged-grid-body">
+          <ul class="image-grid">
+            <li v-for="img in quickPagedImages" :key="img.id || img.url" class="image-card">
+              <span v-if="quickAlbumDetail.coverUrl === img.url" class="cover-badge">封面</span>
+              <AuthImage class="thumb" :src="toAssetUrl(img.url)" :alt="img.originalName || img.url" @click="previewImage(img.url)" />
+              <div class="image-actions">
+                <Button label="预览" text size="small" @click="previewImage(img.url)" />
+                <Button
+                  :label="quickAlbumDetail.coverUrl === img.url ? '当前封面' : '设为封面'"
+                  text
+                  size="small"
+                  @click="selectQuickCover(img.url)"
+                />
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="pagination-bar">
+          <p>子图 {{ quickSubImageTotal }} 张 · 第 {{ quickSubImagePage }} / {{ quickSubImageTotalPages }} 页</p>
+          <div class="ops">
+            <Button label="上一页" size="small" :disabled="!hasQuickSubImagePrevPage" @click="prevQuickSubImagePage" />
+            <Button label="下一页" size="small" :disabled="!hasQuickSubImageNextPage" @click="nextQuickSubImagePage" />
+            <Button label="保存封面设置" icon="pi pi-check" @click="saveQuickCover" />
+          </div>
+        </div>
+      </template>
+    </article>
 
     <Dialog
       v-model:visible="editorVisible"
@@ -416,27 +574,29 @@ loadCustomTemplates()
             />
           </div>
 
-          <ul class="image-grid">
-            <li v-for="img in pagedUploadedImages" :key="img.id" class="image-card">
-              <span v-if="form.coverUrl === img.url" class="cover-badge">封面</span>
-              <AuthImage
-                class="thumb"
-                :src="toAssetUrl(img.url)"
-                :alt="img.originalName || img.url"
-                @click="previewImage(img.url)"
-              />
-              <div class="image-actions">
-                <Button label="预览" text size="small" @click="previewImage(img.url)" />
-                <Button
-                  :label="form.coverUrl === img.url ? '当前封面' : '设为封面'"
-                  text
-                  size="small"
-                  @click="form.coverUrl = img.url"
+          <div class="paged-grid-body">
+            <ul class="image-grid">
+              <li v-for="img in pagedUploadedImages" :key="img.id" class="image-card">
+                <span v-if="form.coverUrl === img.url" class="cover-badge">封面</span>
+                <AuthImage
+                  class="thumb"
+                  :src="toAssetUrl(img.url)"
+                  :alt="img.originalName || img.url"
+                  @click="previewImage(img.url)"
                 />
-                <Button label="删除" text severity="danger" size="small" @click="removeSubImage(img.url)" />
-              </div>
-            </li>
-          </ul>
+                <div class="image-actions">
+                  <Button label="预览" text size="small" @click="previewImage(img.url)" />
+                  <Button
+                    :label="form.coverUrl === img.url ? '当前封面' : '设为封面'"
+                    text
+                    size="small"
+                    @click="form.coverUrl = img.url"
+                  />
+                  <Button label="删除" text severity="danger" size="small" @click="removeSubImage(img.url)" />
+                </div>
+              </li>
+            </ul>
+          </div>
           <div class="pagination-bar">
             <p>子图 {{ subImageTotal }} 张 · 第 {{ subImagePage }} / {{ subImageTotalPages }} 页</p>
             <div class="ops">
@@ -458,3 +618,55 @@ loadCustomTemplates()
     </section>
   </AdminLayout>
 </template>
+
+<style scoped>
+.album-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.album-cover-thumb {
+  width: 72px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #d4dde8;
+}
+
+:deep(.album-row-active) {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.quick-manager-panel {
+  margin-top: 14px;
+}
+
+.quick-manager-panel .image-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.paged-grid-body {
+  min-height: 430px;
+}
+
+.quick-manager-panel .image-card {
+  padding: 6px;
+  gap: 6px;
+}
+
+.quick-manager-panel .thumb {
+  height: 92px;
+}
+
+@media (max-width: 1600px) {
+  .quick-manager-panel .image-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1400px) {
+  .quick-manager-panel .image-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+</style>

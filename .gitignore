@@ -15,3 +15,10 @@ dist/
 
 # Logs
 *.log
+uploads/
+admin/dist/
+client/dist/
+backend/wx-chat.db
+wx-chat.db
+backend/target/
+backend/uploads/

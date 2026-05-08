@@ -9,7 +9,7 @@ export function uploadAlbumImage(file, folder) {
   return http.post('/files/images', formData)
 }
 
-export function fetchAlbums(page = 1, pageSize = 10) {
+export function fetchAlbums(page = 1, pageSize = 15) {
   return http.get('/albums', { params: { page, pageSize } })
 }
 

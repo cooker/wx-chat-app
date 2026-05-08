@@ -1,6 +1,6 @@
 import http from '../../../api/http.js'
 
-export function fetchImages(page = 1, pageSize = 20) {
+export function fetchImages(page = 1, pageSize = 15) {
   return http.get('/images', { params: { page, pageSize } })
 }
 

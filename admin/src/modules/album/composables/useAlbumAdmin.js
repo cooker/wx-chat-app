@@ -14,7 +14,7 @@ export function useAlbumAdmin() {
   const error = ref('')
   const albums = ref([])
   const page = ref(1)
-  const pageSize = ref(10)
+  const pageSize = ref(15)
   const total = ref(0)
   const form = ref({
     id: null,

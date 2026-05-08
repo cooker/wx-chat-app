@@ -35,30 +35,32 @@ const {
           <h2>埋点记录</h2>
           <button @click="clearEvents">清空记录</button>
         </div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>相册</th>
-              <th>访客ID</th>
-              <th>IP</th>
-              <th>设备</th>
-              <th>version</th>
-              <th>访问时间(Unix)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="event in events" :key="event.id">
-              <td>{{ event.id }}</td>
-              <td>{{ event.albumTitle }}</td>
-              <td>{{ event.visitorId }}</td>
-              <td>{{ event.ip }}</td>
-              <td>{{ event.device }}</td>
-              <td>{{ event.deviceVersion }}</td>
-              <td>{{ event.viewedAt }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="event-table-body">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>相册</th>
+                <th>访客ID</th>
+                <th>IP</th>
+                <th>设备</th>
+                <th>version</th>
+                <th>访问时间(Unix)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="event in events" :key="event.id">
+                <td>{{ event.id }}</td>
+                <td>{{ event.albumTitle }}</td>
+                <td>{{ event.visitorId }}</td>
+                <td>{{ event.ip }}</td>
+                <td>{{ event.device }}</td>
+                <td>{{ event.deviceVersion }}</td>
+                <td>{{ event.viewedAt }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div class="pagination-bar">
           <p>共 {{ total }} 条 · 第 {{ page }} / {{ totalPages }} 页</p>
           <div class="ops">
@@ -70,3 +72,10 @@ const {
     </section>
   </AdminLayout>
 </template>
+
+<style scoped>
+.event-table-body {
+  min-height: 540px;
+  overflow: auto;
+}
+</style>
