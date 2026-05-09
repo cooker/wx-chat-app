@@ -1,8 +1,8 @@
 import axios from 'axios'
-import http from './http.js'
+import http, { apiBase } from './http.js'
 
 const raw = axios.create({
-  baseURL: 'http://localhost:8080/api'
+  baseURL: apiBase
 })
 
 raw.interceptors.request.use((config) => {

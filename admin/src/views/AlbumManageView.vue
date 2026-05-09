@@ -114,8 +114,11 @@ const coverImage = computed(() =>
   uploadedImages.value.find((img) => img.url === form.value.coverUrl) ?? null
 )
 const descriptionPreview = computed(() => form.value.description || '')
-const imageBaseUrl = 'http://localhost:8080'
-const toAssetUrl = (url) => `${imageBaseUrl}${url || ''}`
+const toAssetUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return url.startsWith('/') ? url : `/${url}`
+}
 const subImageTotal = computed(() => uploadedImages.value.length)
 const subImageTotalPages = computed(() => Math.max(1, Math.ceil(subImageTotal.value / subImagePageSize)))
 const hasSubImagePrevPage = computed(() => subImagePage.value > 1)

@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+export const apiBase = import.meta.env.VITE_API_BASE || '/api'
+
 const http = axios.create({
-  baseURL: 'http://localhost:8080/api'
+  baseURL: apiBase
 })
 
 function redirectToLogin() {
