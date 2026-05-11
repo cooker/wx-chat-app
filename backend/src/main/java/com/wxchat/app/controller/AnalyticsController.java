@@ -45,6 +45,12 @@ public class AnalyticsController {
         return ApiResponse.success(analyticsService.listEvents(page, pageSize));
     }
 
+    /** 今日去重后的访问 IP（供管理端 IP 画像批量展示）。 */
+    @GetMapping("/today-ips")
+    public ApiResponse<Map<String, Object>> todayDistinctIps() {
+        return ApiResponse.success(Map.of("ips", analyticsService.listTodayDistinctIps()));
+    }
+
     @DeleteMapping("/events")
     public ApiResponse<Void> clearEvents() {
         analyticsService.clearEvents();

@@ -2,9 +2,21 @@
 import { computed, ref } from 'vue'
 import AdminLayout from '../modules/dashboard/components/AdminLayout.vue'
 import { useIpPortraitBrief } from '../modules/tools/ipPortrait/composables/useIpPortraitBrief'
+import { useTodayIpPortraits } from '../modules/tools/ipPortrait/composables/useTodayIpPortraits'
+import Button from 'primevue/button'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 
 const ipInput = ref('')
 const { loading, error, result, query, clear } = useIpPortraitBrief()
+
+const {
+  loading: todayLoading,
+  error: todayError,
+  rows: todayRows,
+  fetchDone: todayFetchDone,
+  load: loadTodayIpPortraits
+} = useTodayIpPortraits()
 
 const formattedJson = computed(() => {
   if (!result.value) return ''
@@ -25,10 +37,14 @@ const onRefresh = () => {
     onQuery()
   }
 }
+
+const onLoadToday = () => {
+  loadTodayIpPortraits()
+}
 </script>
 
 <template>
-  <AdminLayout :loading="loading" @refresh="onRefresh">
+  <AdminLayout :loading="loading || todayLoading" @refresh="onRefresh">
     <article class="panel full ip-tool-panel">
       <h2>IP 画像查询（奇符 brief-info）</h2>
       <p class="hint">
@@ -43,6 +59,46 @@ const onRefresh = () => {
       </div>
       <p v-if="error" class="error">{{ error }}</p>
       <pre v-if="formattedJson" class="ip-tool-json">{{ formattedJson }}</pre>
+
+      <section class="today-ip-section">
+        <div class="today-ip-header">
+          <h3>今日访问 IP（去重）</h3>
+          <Button
+            label="加载并解析城市"
+            icon="pi pi-sync"
+            size="small"
+            :loading="todayLoading"
+            :disabled="todayLoading"
+            @click="onLoadToday"
+          />
+        </div>
+        <p class="hint">
+          数据来自今日埋点 <code>access_events</code>（与统计看板同一时区自然日）；逐条调用
+          <code>fetchIpPortraitBrief</code>（<code>/api/tools/ip-portrait</code>）解析城市。
+        </p>
+        <p v-if="todayError" class="error">{{ todayError }}</p>
+        <DataTable
+          v-if="todayLoading || todayRows.length > 0 || todayFetchDone"
+          :value="todayRows"
+          size="small"
+          striped-rows
+          :empty-message="todayLoading ? '正在拉取画像…' : '今日暂无去重 IP 记录'"
+        >
+          <Column field="ip" header="IP" />
+          <Column field="city" header="城市">
+            <template #body="{ data }">
+              <span>{{ data.city || '—' }}</span>
+            </template>
+          </Column>
+          <Column field="error" header="备注">
+            <template #body="{ data }">
+              <span v-if="data.error" class="error">{{ data.error }}</span>
+              <span v-else class="muted">—</span>
+            </template>
+          </Column>
+        </DataTable>
+        <p v-else class="muted">点击「加载并解析城市」查看今日去重 IP。</p>
+      </section>
     </article>
   </AdminLayout>
 </template>
@@ -90,5 +146,32 @@ const onRefresh = () => {
   color: #b91c1c;
   font-size: 13px;
   margin: 0 0 8px;
+}
+.today-ip-section {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+.today-ip-section h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.today-ip-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.muted {
+  color: #94a3b8;
+  font-size: 13px;
+}
+.today-ip-section code {
+  font-size: 12px;
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 </style>

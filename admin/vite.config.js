@@ -7,8 +7,8 @@ export default defineConfig({
   base: '/admin/',
   server: {
     proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true },
-      '/uploads': { target: 'http://localhost:8080', changeOrigin: true }
+      '/api': { target: 'http://localhost:8384', changeOrigin: true },
+      '/uploads': { target: 'http://localhost:8384', changeOrigin: true }
     }
   },
   build: {

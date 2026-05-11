@@ -11,6 +11,7 @@ import Select from 'primevue/select'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import { fetchAlbumDetail, updateAlbum, uploadAlbumImage } from '../modules/album/api/albumApi'
+import { convertImageFileToWebP } from '../utils/imageWebP.js'
 
 const {
   loading,
@@ -332,7 +333,8 @@ const onQuickUploadChange = async (event) => {
   quickAlbumError.value = ''
   try {
     for (const file of files) {
-      await uploadAlbumImage(file, quickAlbumDetail.value.imageFolder)
+      const webpFile = await convertImageFileToWebP(file)
+      await uploadAlbumImage(webpFile, quickAlbumDetail.value.imageFolder)
     }
     await loadQuickAlbum(quickAlbumDetail.value.id)
     await loadAlbums(page.value)
@@ -430,7 +432,7 @@ loadCustomTemplates()
             ref="quickAppendInputRef"
             class="hidden-file-input"
             type="file"
-            accept="image/*"
+            accept=".jpg,.jpeg,.jfif,.png,.webp,image/jpeg,image/png,image/webp"
             multiple
             @change="onQuickUploadChange"
           />
@@ -553,7 +555,7 @@ loadCustomTemplates()
               ref="coverInputRef"
               class="hidden-file-input"
               type="file"
-              accept="image/*"
+              accept=".jpg,.jpeg,.jfif,.png,.webp,image/jpeg,image/png,image/webp"
               multiple
               @change="onFileChange"
             />
@@ -571,7 +573,7 @@ loadCustomTemplates()
               ref="appendInputRef"
               class="hidden-file-input"
               type="file"
-              accept="image/*"
+              accept=".jpg,.jpeg,.jfif,.png,.webp,image/jpeg,image/png,image/webp"
               multiple
               @change="onAppendFileChange"
             />

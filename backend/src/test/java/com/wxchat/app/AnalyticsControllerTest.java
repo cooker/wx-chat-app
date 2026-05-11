@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -105,5 +107,43 @@ class AnalyticsControllerTest {
         mockMvc.perform(get("/api/analytics/events"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(0));
+    }
+
+    @Test
+    void shouldListTodayDistinctIps() throws Exception {
+        String uniqueIp = "203.0.113." + ThreadLocalRandom.current().nextInt(1, 254);
+        String body = """
+                {
+                  "albumId": 1,
+                  "visitorId": "today-ip-test-a"
+                }
+                """;
+        mockMvc.perform(post("/api/analytics/track")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Forwarded-For", uniqueIp)
+                        .header("User-Agent", "TodayIpTest/1.0")
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+        mockMvc.perform(post("/api/analytics/track")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Forwarded-For", uniqueIp)
+                        .header("User-Agent", "TodayIpTest/2.0")
+                        .content("""
+                                {
+                                  "albumId": 1,
+                                  "visitorId": "today-ip-test-b"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        MvcResult r = mockMvc.perform(get("/api/analytics/today-ips"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.ips").isArray())
+                .andReturn();
+        org.junit.jupiter.api.Assertions.assertTrue(
+                r.getResponse().getContentAsString().contains("\"" + uniqueIp + "\"")
+        );
     }
 }

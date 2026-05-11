@@ -11,9 +11,13 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.nio.charset.StandardCharsets;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.endsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -33,12 +37,12 @@ class AlbumControllerTest {
 
     @Test
     void shouldUploadImageWithDeduplication() throws Exception {
-        String uniqueContent = "same-image-content-" + UUID.randomUUID();
+        byte[] png = tinyPng((0xAABBCC ^ UUID.randomUUID().hashCode()) & 0xFFFFFF);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
-                "cover.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                uniqueContent.getBytes(StandardCharsets.UTF_8)
+                "cover.png",
+                MediaType.IMAGE_PNG_VALUE,
+                png
         );
 
         String folder = "test-" + UUID.randomUUID();
@@ -47,6 +51,7 @@ class AlbumControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.id").exists())
                 .andExpect(jsonPath("$.data.duplicate").value(false))
+                .andExpect(jsonPath("$.data.url").value(endsWith(".webp")))
                 .andReturn();
 
         MvcResult secondResult = mockMvc.perform(multipart("/api/files/images").file(file).param("folder", folder))
@@ -64,18 +69,32 @@ class AlbumControllerTest {
     }
 
     @Test
+    void shouldRejectUnsupportedImageExtension() throws Exception {
+        byte[] png = tinyPng(0x112233);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "x.gif",
+                MediaType.IMAGE_GIF_VALUE,
+                png
+        );
+        mockMvc.perform(multipart("/api/files/images").file(file))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
+    @Test
     void shouldCreateUpdateAndDeleteAlbum() throws Exception {
         MockMultipartFile fileA = new MockMultipartFile(
                 "file",
-                "a.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "album-image-A".getBytes()
+                "a.png",
+                MediaType.IMAGE_PNG_VALUE,
+                tinyPng(0xFF0000)
         );
         MockMultipartFile fileB = new MockMultipartFile(
                 "file",
-                "b.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "album-image-B".getBytes()
+                "b.png",
+                MediaType.IMAGE_PNG_VALUE,
+                tinyPng(0x0000FF)
         );
 
         String folder = "album-" + UUID.randomUUID();
@@ -142,8 +161,22 @@ class AlbumControllerTest {
         MvcResult result = mockMvc.perform(multipart("/api/files/images").file(file).param("folder", folder))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.url").value(endsWith(".webp")))
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("data").path("url").asText();
+    }
+
+    private static byte[] tinyPng(int rgb) throws IOException {
+        BufferedImage img = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        int argb = 0xFF000000 | (rgb & 0xFFFFFF);
+        for (int x = 0; x < 2; x++) {
+            for (int y = 0; y < 2; y++) {
+                img.setRGB(x, y, argb);
+            }
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", baos);
+        return baos.toByteArray();
     }
 }

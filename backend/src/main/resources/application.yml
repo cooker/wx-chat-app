@@ -1,6 +1,10 @@
 spring:
   application:
     name: wx-chat-backend
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
   datasource:
     driver-class-name: org.sqlite.JDBC
     url: jdbc:sqlite:./wx-chat.db
@@ -18,8 +22,9 @@ server:
   port: 8384
 
 app:
-  upload-dir: ./uploads
-  album-image-dir: ./uploads/albums
+  # 可由 start.sh 设置 APP_UPLOAD_DIR / APP_ALBUM_IMAGE_DIR 为绝对路径（推荐服务器部署）
+  upload-dir: ${APP_UPLOAD_DIR:./uploads}
+  album-image-dir: ${APP_ALBUM_IMAGE_DIR:./uploads/albums}
   admin:
     auth-enabled: true
     password: ${ADMIN_PASSWORD:admin123}

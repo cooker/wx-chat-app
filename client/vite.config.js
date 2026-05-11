@@ -5,6 +5,12 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   base: '/client/',
+  server: {
+    proxy: {
+      '/api': { target: 'http://localhost:8384', changeOrigin: true },
+      '/uploads': { target: 'http://localhost:8384', changeOrigin: true }
+    }
+  },
   build: {
     outDir: '../backend/src/main/resources/static/client',
     emptyOutDir: true

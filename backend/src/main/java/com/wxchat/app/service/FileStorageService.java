@@ -1,25 +1,36 @@
 package com.wxchat.app.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 @Service
 public class FileStorageService {
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "jfif", "png", "webp");
+    private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
+
     @Value("${app.upload-dir:./uploads}")
     private String uploadDir;
 
@@ -27,24 +38,49 @@ public class FileStorageService {
     private String albumImageDir;
 
     public Map<String, Object> uploadImage(MultipartFile file, String folder) throws IOException {
+        String originalName = file.getOriginalFilename() == null ? "unknown" : file.getOriginalFilename();
+        String ext = getExtension(originalName);
+        if (ext.isEmpty() || !ALLOWED_EXTENSIONS.contains(ext)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "仅支持 jpg、jpeg、jfif、png、webp 格式的图片"
+            );
+        }
+
         byte[] bytes = file.getBytes();
-        String hash = sha256(bytes);
+        if (bytes.length == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "文件为空");
+        }
+        if (bytes.length > MAX_IMAGE_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "图片大小不能超过 10MB");
+        }
+
+        BufferedImage decoded;
+        try (ByteArrayInputStream in = new ByteArrayInputStream(bytes)) {
+            decoded = ImageIO.read(in);
+        }
+        if (decoded == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "无法解析的图片文件");
+        }
+
+        boolean useClientWebp = "webp".equals(ext) && looksLikeRiffWebp(bytes);
+        byte[] webpBytes = useClientWebp ? bytes : encodeWebp(normalizeForEncode(decoded));
+        String hash = sha256(webpBytes);
         String safeFolder = sanitizeFolder(folder);
-        String ext = getExtension(file.getOriginalFilename());
-        String storageName = ext.isEmpty() ? hash : hash + "." + ext;
+        String storageName = hash + ".webp";
         Path dir = getFolderPath(safeFolder);
         Files.createDirectories(dir);
         Path target = dir.resolve(storageName);
         boolean duplicate = Files.exists(target);
         if (!duplicate) {
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            Files.write(target, webpBytes);
         }
 
         String url = toPublicUrl(dir, storageName);
         long id = stableId(url);
         return Map.of(
                 "id", id,
-                "originalName", file.getOriginalFilename() == null ? "unknown" : file.getOriginalFilename(),
+                "originalName", originalName,
                 "url", url,
                 "hash", hash,
                 "folder", safeFolder,
@@ -138,6 +174,7 @@ public class FileStorageService {
         String name = path.getFileName().toString().toLowerCase();
         return name.endsWith(".jpg")
                 || name.endsWith(".jpeg")
+                || name.endsWith(".jfif")
                 || name.endsWith(".png")
                 || name.endsWith(".webp")
                 || name.endsWith(".gif")
@@ -158,5 +195,43 @@ public class FileStorageService {
             return "";
         }
         return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+    }
+
+    private static boolean looksLikeRiffWebp(byte[] b) {
+        return b.length >= 12
+                && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F'
+                && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P';
+    }
+
+    private static BufferedImage normalizeForEncode(BufferedImage src) {
+        int type = src.getColorModel().hasAlpha() ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
+        if (src.getType() == type) {
+            return src;
+        }
+        BufferedImage copy = new BufferedImage(src.getWidth(), src.getHeight(), type);
+        Graphics2D g = copy.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            if (!src.getColorModel().hasAlpha() && type == BufferedImage.TYPE_INT_RGB) {
+                g.setColor(java.awt.Color.WHITE);
+                g.fillRect(0, 0, copy.getWidth(), copy.getHeight());
+            }
+            g.drawImage(src, 0, 0, null);
+        } finally {
+            g.dispose();
+        }
+        return copy;
+    }
+
+    private static byte[] encodeWebp(BufferedImage image) throws IOException {
+        if (!ImageIO.getImageWritersByFormatName("webp").hasNext()) {
+            throw new IllegalStateException("WebP ImageWriter 未注册，请确认已引入 webp-imageio");
+        }
+        try (ByteArrayOutputStream raw = new ByteArrayOutputStream()) {
+            if (!ImageIO.write(image, "webp", raw)) {
+                throw new IOException("WebP 编码失败");
+            }
+            return raw.toByteArray();
+        }
     }
 }

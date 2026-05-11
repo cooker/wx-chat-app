@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
@@ -109,6 +111,39 @@ public class AnalyticsService {
                 deviceVersion,
                 now
         );
+    }
+
+    /**
+     * 今日（按服务器默认时区自然日）埋点中去重后的客户端 IP，排除 unknown / 环回等无效值。
+     */
+    public List<String> listTodayDistinctIps() {
+        long todayStart = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toEpochSecond();
+        List<String> raw = jdbcTemplate.query(
+                """
+                        SELECT DISTINCT TRIM(ip) AS ip
+                        FROM access_events
+                        WHERE viewed_at >= ?
+                          AND TRIM(COALESCE(ip, '')) != ''
+                          AND LOWER(TRIM(ip)) NOT IN ('unknown', '::1', '0:0:0:0:0:0:0:1')
+                          AND TRIM(ip) NOT IN ('127.0.0.1')
+                        ORDER BY ip
+                        """,
+                (rs, rowNum) -> rs.getString("ip"),
+                todayStart
+        );
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String ip : raw) {
+            if (ip != null) {
+                String t = ip.trim();
+                if (!t.isEmpty()) {
+                    out.add(t);
+                }
+            }
+        }
+        return Collections.unmodifiableList(out);
     }
 
     public Map<String, Object> listEvents(int page, int pageSize) {

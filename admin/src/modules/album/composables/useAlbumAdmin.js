@@ -7,6 +7,7 @@ import {
   updateAlbum,
   uploadAlbumImage
 } from '../api/albumApi'
+import { convertImageFileToWebP } from '../../../utils/imageWebP.js'
 
 export function useAlbumAdmin() {
   const createFolder = () => `album-${Date.now()}`
@@ -50,7 +51,8 @@ export function useAlbumAdmin() {
     uploading.value = true
     try {
       for (const file of files) {
-        const { data } = await uploadAlbumImage(file, form.value.imageFolder)
+        const webpFile = await convertImageFileToWebP(file)
+        const { data } = await uploadAlbumImage(webpFile, form.value.imageFolder)
         const image = data?.data
         if (!image) continue
         if (!uploadedImages.value.find((item) => item.id === image.id)) {

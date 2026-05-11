@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const apiBase = import.meta.env.VITE_API_BASE || '/api'
+
 const http = axios.create({
-  baseURL: 'http://localhost:8080/api'
+  baseURL: apiBase
 })
 
 export function fetchAlbums() {
@@ -19,5 +21,5 @@ export function reportAlbumView(albumId, visitorId) {
 export function toAssetUrl(path) {
   if (!path) return ''
   if (path.startsWith('http://') || path.startsWith('https://')) return path
-  return `http://localhost:8080${path}`
+  return path.startsWith('/') ? path : `/${path}`
 }
