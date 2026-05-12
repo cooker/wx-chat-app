@@ -5,12 +5,18 @@ import App from './App.vue'
 import router from './router'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
+import { loadPublicConfig } from './api/systemSettingsApi'
 
-createApp(App)
-  .use(router)
-  .use(PrimeVue, {
-    theme: {
-      preset: Aura
-    }
-  })
-  .mount('#app')
+async function bootstrap() {
+  await loadPublicConfig().catch(() => {})
+  createApp(App)
+    .use(router)
+    .use(PrimeVue, {
+      theme: {
+        preset: Aura
+      }
+    })
+    .mount('#app')
+}
+
+bootstrap()

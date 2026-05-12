@@ -3,6 +3,7 @@ import LoginView from '../views/LoginView.vue'
 import ImageManageView from '../views/ImageManageView.vue'
 import AlbumManageView from '../views/AlbumManageView.vue'
 import IpPortraitToolView from '../views/IpPortraitToolView.vue'
+import SystemParamsView from '../views/SystemParamsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,6 +30,12 @@ const router = createRouter({
       path: '/tools/ip-portrait',
       name: 'ip-portrait-tool',
       component: IpPortraitToolView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/settings/system-params',
+      name: 'system-params',
+      component: SystemParamsView,
       meta: { requiresAuth: true }
     }
   ]

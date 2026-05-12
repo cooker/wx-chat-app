@@ -12,6 +12,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import { fetchAlbumDetail, updateAlbum, uploadAlbumImage } from '../modules/album/api/albumApi'
 import { convertImageFileToWebP } from '../utils/imageWebP.js'
+import { toAssetUrl } from '../utils/assetUrl.js'
 
 const {
   loading,
@@ -115,11 +116,6 @@ const coverImage = computed(() =>
   uploadedImages.value.find((img) => img.url === form.value.coverUrl) ?? null
 )
 const descriptionPreview = computed(() => form.value.description || '')
-const toAssetUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  return url.startsWith('/') ? url : `/${url}`
-}
 const subImageTotal = computed(() => uploadedImages.value.length)
 const subImageTotalPages = computed(() => Math.max(1, Math.ceil(subImageTotal.value / subImagePageSize)))
 const hasSubImagePrevPage = computed(() => subImagePage.value > 1)
