@@ -44,6 +44,11 @@ CREATE TABLE IF NOT EXISTS access_events (
     viewed_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key TEXT PRIMARY KEY,
+    setting_value TEXT NOT NULL DEFAULT ''
+);
+
 -- Existing file DBs keep their old table shape; IF NOT EXISTS does not add new columns.
 -- These ALTERs align schema before data.sql; on fresh DBs they duplicate columns and are skipped via spring.sql.init.continue-on-error.
 ALTER TABLE access_events ADD COLUMN ip TEXT;

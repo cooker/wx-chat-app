@@ -1,4 +1,5 @@
-export const FEED_PAGE_SIZE = 8
+/** 默认每页条数；运行时会以服务端 `/api/public/config` 的 feedPageSize 为准 */
+export const FEED_PAGE_SIZE_DEFAULT = 8
 
 export const WATERFALL_LAYOUT = {
   itemMinWidth: 150,

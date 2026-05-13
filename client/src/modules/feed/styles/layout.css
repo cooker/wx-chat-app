@@ -8,8 +8,13 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  margin-bottom: 14px;
   min-height: 36px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  background: linear-gradient(180deg, #0b0d10 85%, rgba(11, 13, 16, 0));
 }
 
 .feed-header h1 {
@@ -26,16 +31,20 @@
 }
 
 .waterfall-container {
-  height: 78vh;
-  min-height: 480px;
   margin-top: 8px;
-  overflow: auto;
   border-radius: 8px;
+  padding-bottom: 20px;
 }
+
+/*
+ * VirtualWaterfall 依赖 window 的 scroll（capture）计算可视区域；
+ * 若放在 overflow:auto + 固定高度的盒子内滚动，列表与分页都会异常。
+ * 此处不限制高度，由整页滚动驱动虚拟列表与触底加载。
+ */
 
 @media (max-width: 960px) {
   .waterfall-container {
-    min-height: 430px;
+    min-height: 0;
   }
 }
 
@@ -45,6 +54,6 @@
   }
 
   .waterfall-container {
-    min-height: 380px;
+    min-height: 0;
   }
 }

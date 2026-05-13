@@ -81,6 +81,9 @@ public class AdminAuthFilter extends OncePerRequestFilter {
         if ("GET".equalsIgnoreCase(method) && "/api/health".equals(path)) {
             return true;
         }
+        if ("GET".equalsIgnoreCase(method) && "/api/public/config".equals(path)) {
+            return true;
+        }
         if ("GET".equalsIgnoreCase(method) && "/api/albums".equals(path)) {
             return true;
         }

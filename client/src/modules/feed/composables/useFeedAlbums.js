@@ -1,15 +1,21 @@
 import { computed, onMounted, ref } from 'vue'
-import { fetchAlbumDetail, fetchAlbums, reportAlbumView, toAssetUrl } from '../../../api/images'
-import { FEED_PAGE_SIZE, SKELETON_ITEMS } from '../constants/waterfall'
+import {
+  fetchAlbumDetail,
+  fetchAlbums,
+  reportAlbumView,
+  toAssetUrl,
+  toOriginAssetUrl,
+  getFeedPageSize
+} from '../../../api/images'
+import { SKELETON_ITEMS } from '../constants/waterfall'
 
 export function useFeedAlbums() {
   const loading = ref(false)
+  const refreshing = ref(false)
   const error = ref('')
   const list = ref([])
-  const allAlbums = ref([])
   const previewVisible = ref(false)
   const activeIndex = ref(0)
-  const page = ref(0)
   const hasMore = ref(true)
   const loadingMore = ref(false)
   const previewImages = ref([])
@@ -17,6 +23,7 @@ export function useFeedAlbums() {
   const previewDescription = ref('')
   const previewLoading = ref(false)
   const ratioMap = ref({})
+  const nextApiPage = ref(1)
 
   const skeletonItems = ref(SKELETON_ITEMS)
 
@@ -33,41 +40,67 @@ export function useFeedAlbums() {
   const calcSkeletonHeight = (item, width) => Math.round(width * (item.ratio || 1.1))
 
   const load = async (reset = true) => {
-    if (reset) {
-      page.value = 0
+    if (!reset) {
+      // 注意：loadMore 会先置 loadingMore 再调用 load(false)，此处不能判断 loadingMore
+      if (!hasMore.value || loading.value || refreshing.value) return
+    } else {
+      if (loading.value || refreshing.value) return
+      nextApiPage.value = 1
       hasMore.value = true
-      list.value = []
-    }
-    if (!hasMore.value && !reset) return
-
-    const currentPage = reset ? 0 : page.value
-    loading.value = true
-    error.value = ''
-    try {
-      if (reset) {
-        const { data } = await fetchAlbums()
-        allAlbums.value = data?.data?.items ?? []
-        await hydrateImageRatios(allAlbums.value)
+      if (list.value.length === 0) {
+        loading.value = true
+      } else {
+        refreshing.value = true
       }
-      const nextChunk = allAlbums.value.slice(
-        currentPage * FEED_PAGE_SIZE,
-        (currentPage + 1) * FEED_PAGE_SIZE
-      )
-      list.value = reset ? nextChunk : [...list.value, ...nextChunk]
-      hasMore.value = (currentPage + 1) * FEED_PAGE_SIZE < allAlbums.value.length
-      page.value = currentPage + 1
+    }
+
+    error.value = ''
+    const apiPage = reset ? 1 : nextApiPage.value
+    const pageSize = getFeedPageSize()
+
+    try {
+      const { data } = await fetchAlbums({ page: apiPage, pageSize })
+      const payload = data?.data ?? {}
+      const items = Array.isArray(payload.items) ? payload.items : []
+      const totalNum = Number(payload.total)
+      const totalValid = Number.isFinite(totalNum) && totalNum >= 0
+
+      if (reset) {
+        list.value = items
+        nextApiPage.value = 2
+      } else if (items.length > 0) {
+        list.value = [...list.value, ...items]
+        nextApiPage.value = apiPage + 1
+      }
+
+      if (!reset && items.length === 0) {
+        hasMore.value = false
+      } else if (totalValid) {
+        hasMore.value = list.value.length < totalNum
+      } else {
+        // total 异常时：满页则认为可能还有下一页
+        hasMore.value = items.length >= pageSize
+      }
+
+      await hydrateImageRatios(items)
     } catch (err) {
       error.value = err?.message ?? '加载失败'
     } finally {
-      loading.value = false
+      if (reset) {
+        loading.value = false
+        refreshing.value = false
+      }
     }
   }
 
   const loadMore = async () => {
-    if (loadingMore.value || !hasMore.value) return
+    if (loadingMore.value || !hasMore.value || loading.value || refreshing.value) return
     loadingMore.value = true
-    await load(false)
-    loadingMore.value = false
+    try {
+      await load(false)
+    } finally {
+      loadingMore.value = false
+    }
   }
 
   const openPreview = (albumId) => {
@@ -105,10 +138,11 @@ export function useFeedAlbums() {
 
   const hydrateImageRatios = async (albums) => {
     const tasks = (albums || []).map(async (album) => {
-      const url = toAssetUrl(album.coverUrl)
-      if (!url || ratioMap.value[url]) return
-      const ratio = await readImageRatio(url)
-      if (ratio) ratioMap.value[url] = ratio
+      const displayUrl = toAssetUrl(album.coverUrl)
+      if (!displayUrl || ratioMap.value[displayUrl]) return
+      const loadUrl = toOriginAssetUrl(album.coverUrl)
+      const ratio = await readImageRatio(loadUrl || displayUrl)
+      if (ratio) ratioMap.value[displayUrl] = ratio
     })
     await Promise.all(tasks)
   }
@@ -125,6 +159,7 @@ export function useFeedAlbums() {
 
   return {
     loading,
+    refreshing,
     error,
     list,
     previewVisible,

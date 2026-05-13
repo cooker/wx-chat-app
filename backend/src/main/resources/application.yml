@@ -22,6 +22,8 @@ server:
   port: 8384
 
 app:
+  # 访客端拼接 /uploads 等相对路径时的源站根（https://api.example.com）。不填则从请求 Host 推断。
+  public-base-url: ${APP_PUBLIC_BASE_URL:}
   # 可由 start.sh 设置 APP_UPLOAD_DIR / APP_ALBUM_IMAGE_DIR 为绝对路径（推荐服务器部署）
   upload-dir: ${APP_UPLOAD_DIR:./uploads}
   album-image-dir: ${APP_ALBUM_IMAGE_DIR:./uploads/albums}

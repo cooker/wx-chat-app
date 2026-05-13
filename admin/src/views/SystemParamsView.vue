@@ -3,15 +3,25 @@ import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '../modules/dashboard/components/AdminLayout.vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
-import { fetchImageCdnSetting, saveImageCdnSetting } from '../api/systemSettingsApi'
+import {
+  fetchImageCdnSetting,
+  saveImageCdnSetting,
+  fetchFeedPageSetting,
+  saveFeedPageSetting
+} from '../api/systemSettingsApi'
 import { getImageCdnBase, setImageCdnBase } from '../utils/assetUrl'
 
 const mode = ref('local')
 const cdnDomain = ref('')
+const feedPageSize = ref(8)
+
 const loading = ref(false)
-const saving = ref(false)
-const error = ref('')
-const savedHint = ref('')
+const savingCdn = ref(false)
+const savingFeed = ref(false)
+const cdnError = ref('')
+const feedError = ref('')
+const cdnSavedHint = ref('')
+const feedSavedHint = ref('')
 
 const examplePath = '/uploads/albums/demo/cover.webp'
 
@@ -48,10 +58,11 @@ const previewUrl = computed(() => {
 
 onMounted(async () => {
   loading.value = true
-  error.value = ''
+  cdnError.value = ''
+  feedError.value = ''
   try {
-    const { imageCdnBase } = await fetchImageCdnSetting()
-    const base = typeof imageCdnBase === 'string' ? imageCdnBase : ''
+    const [cdn, feed] = await Promise.all([fetchImageCdnSetting(), fetchFeedPageSetting()])
+    const base = typeof cdn.imageCdnBase === 'string' ? cdn.imageCdnBase : ''
     setImageCdnBase(base)
     if (base) {
       mode.value = 'cdn'
@@ -60,8 +71,11 @@ onMounted(async () => {
       mode.value = 'local'
       cdnDomain.value = ''
     }
+    const fps = feed?.feedPageSize
+    const n = typeof fps === 'number' ? fps : parseInt(String(fps ?? '8'), 10)
+    feedPageSize.value = Number.isFinite(n) ? Math.min(100, Math.max(1, n)) : 8
   } catch (e) {
-    error.value = e?.response?.data?.message || e?.message || '加载配置失败'
+    cdnError.value = e?.response?.data?.message || e?.message || '加载配置失败'
   } finally {
     loading.value = false
   }
@@ -69,7 +83,7 @@ onMounted(async () => {
 
 const onModeChange = (next) => {
   mode.value = next
-  savedHint.value = ''
+  cdnSavedHint.value = ''
   if (next === 'local') {
     cdnDomain.value = ''
   } else if (!cdnDomain.value.trim() && getImageCdnBase()) {
@@ -77,18 +91,42 @@ const onModeChange = (next) => {
   }
 }
 
-const onSave = async () => {
-  saving.value = true
-  error.value = ''
-  savedHint.value = ''
+const onSaveCdn = async () => {
+  savingCdn.value = true
+  cdnError.value = ''
+  cdnSavedHint.value = ''
   const payload = mode.value === 'local' ? '' : cdnDomain.value.trim()
   try {
     await saveImageCdnSetting(payload)
-    savedHint.value = '已保存'
+    cdnSavedHint.value = '已保存'
   } catch (e) {
-    error.value = e?.response?.data?.message || e?.message || '保存失败'
+    cdnError.value = e?.response?.data?.message || e?.message || '保存失败'
   } finally {
-    saving.value = false
+    savingCdn.value = false
+  }
+}
+
+const onSaveFeedPage = async () => {
+  savingFeed.value = true
+  feedError.value = ''
+  feedSavedHint.value = ''
+  const raw = parseInt(String(feedPageSize.value).trim(), 10)
+  if (!Number.isFinite(raw) || raw < 1 || raw > 100) {
+    feedError.value = '请输入 1～100 之间的整数'
+    savingFeed.value = false
+    return
+  }
+  try {
+    const out = await saveFeedPageSetting(raw)
+    const stored = out?.feedPageSize
+    if (typeof stored === 'number') {
+      feedPageSize.value = stored
+    }
+    feedSavedHint.value = '已保存'
+  } catch (e) {
+    feedError.value = e?.response?.data?.message || e?.message || '保存失败'
+  } finally {
+    savingFeed.value = false
   }
 }
 </script>
@@ -97,10 +135,12 @@ const onSave = async () => {
   <AdminLayout :loading="loading">
     <article class="panel full">
       <h2>系统参数配置</h2>
-      <p class="hint">图片资源地址：选择本地（与接口同源）或由 CDN 域名拼接 <code>/uploads/...</code> 路径。</p>
 
       <section class="block">
         <h3>图片 CDN</h3>
+        <p class="hint">
+          图片资源地址：选择本地（与接口同源）或由 CDN 域名拼接 <code>/uploads/...</code> 路径。
+        </p>
         <div class="mode-row">
           <label class="mode-option">
             <input type="radio" name="img-mode" value="local" :checked="mode === 'local'" @change="onModeChange('local')" />
@@ -118,21 +158,42 @@ const onSave = async () => {
             v-model="cdnDomain"
             class="cdn-input"
             placeholder="例如：https://img.example.com 或 img.example.com"
-            @update:model-value="savedHint = ''"
+            @update:model-value="cdnSavedHint = ''"
           />
           <p class="field-hint">可只填域名，将自动补全为 <code>https://</code>；保存后访客端与后台预览均使用该前缀。</p>
         </div>
 
         <div class="actions">
-          <Button label="保存" icon="pi pi-check" :loading="saving" :disabled="loading" @click="onSave" />
-          <span v-if="savedHint" class="ok">{{ savedHint }}</span>
+          <Button label="保存 CDN 设置" icon="pi pi-check" :loading="savingCdn" :disabled="loading" @click="onSaveCdn" />
+          <span v-if="cdnSavedHint" class="ok">{{ cdnSavedHint }}</span>
         </div>
-        <p v-if="error" class="err">{{ error }}</p>
+        <p v-if="cdnError" class="err">{{ cdnError }}</p>
 
         <div class="preview-block">
           <span class="preview-label">示例拼接结果</span>
           <code class="preview-code">{{ previewUrl }}</code>
         </div>
+      </section>
+
+      <section class="block block-spaced">
+        <h3>访客分页</h3>
+        <p class="hint">控制访客端「名人榜」瀑布流每次向后端请求的相册条数（1～100），并用于触底自动加载更多。</p>
+        <div class="cdn-field">
+          <label class="field-label">每页条数</label>
+          <InputText
+            v-model="feedPageSize"
+            type="number"
+            class="cdn-input feed-page-input"
+            :min="1"
+            :max="100"
+            @update:model-value="feedSavedHint = ''"
+          />
+        </div>
+        <div class="actions">
+          <Button label="保存分页设置" icon="pi pi-save" :loading="savingFeed" :disabled="loading" @click="onSaveFeedPage" />
+          <span v-if="feedSavedHint" class="ok">{{ feedSavedHint }}</span>
+        </div>
+        <p v-if="feedError" class="err">{{ feedError }}</p>
       </section>
     </article>
   </AdminLayout>
@@ -143,7 +204,7 @@ const onSave = async () => {
   margin-top: 0;
 }
 .hint {
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   font-size: 13px;
   color: #64748b;
   line-height: 1.5;
@@ -156,6 +217,11 @@ const onSave = async () => {
 }
 .block {
   max-width: 640px;
+}
+.block-spaced {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
 }
 .block h3 {
   margin: 0 0 12px;
@@ -188,6 +254,9 @@ const onSave = async () => {
 .cdn-input {
   width: 100%;
   max-width: 480px;
+}
+.feed-page-input {
+  max-width: 160px;
 }
 .field-hint {
   margin: 8px 0 0;

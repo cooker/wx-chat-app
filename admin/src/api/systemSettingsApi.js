@@ -1,13 +1,32 @@
 import http from './http'
-import { setImageCdnBase } from '../utils/assetUrl'
+import { setImageCdnBase, setUploadServerOrigin } from '../utils/assetUrl'
+
+function inferOriginFromViteApiBase() {
+  const base = import.meta.env.VITE_API_BASE || '/api'
+  if (typeof base !== 'string' || !/^https?:\/\//i.test(base)) {
+    return ''
+  }
+  try {
+    let o = new URL(base).origin
+    while (o.endsWith('/')) {
+      o = o.slice(0, -1)
+    }
+    return o
+  } catch {
+    return ''
+  }
+}
 
 export async function loadPublicConfig() {
   try {
     const { data } = await http.get('/public/config')
-    const base = data?.data?.imageCdnBase
-    setImageCdnBase(typeof base === 'string' ? base : '')
+    const d = data?.data ?? {}
+    setImageCdnBase(typeof d.imageCdnBase === 'string' ? d.imageCdnBase : '')
+    const fromApi = typeof d.uploadServerOrigin === 'string' ? d.uploadServerOrigin.trim() : ''
+    setUploadServerOrigin(fromApi || inferOriginFromViteApiBase())
   } catch {
     setImageCdnBase('')
+    setUploadServerOrigin(inferOriginFromViteApiBase())
   }
 }
 
@@ -23,4 +42,14 @@ export async function saveImageCdnSetting(imageCdnBase) {
     setImageCdnBase(out.imageCdnBase)
   }
   return out
+}
+
+export async function fetchFeedPageSetting() {
+  const { data } = await http.get('/admin/settings/feed-page')
+  return data?.data ?? { feedPageSize: 8 }
+}
+
+export async function saveFeedPageSetting(feedPageSize) {
+  const { data } = await http.put('/admin/settings/feed-page', { feedPageSize })
+  return data?.data ?? {}
 }
