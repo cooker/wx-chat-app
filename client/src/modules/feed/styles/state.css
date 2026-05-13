@@ -9,7 +9,7 @@
 
 .feed-status {
   margin-top: 16px;
-  margin-bottom: 24px;
+  margin-bottom: max(24px, env(safe-area-inset-bottom, 0px));
   text-align: center;
   color: #cbd5e1;
   font-size: 13px;
@@ -17,6 +17,7 @@
 
 .feed-load-more-btn {
   min-width: 160px;
+  min-height: 44px;
   padding: 10px 20px;
   font-size: 14px;
   border-radius: 10px;
@@ -24,6 +25,7 @@
   background: #111827;
   color: #e2e8f0;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .feed-load-more-btn:hover:not(:disabled) {

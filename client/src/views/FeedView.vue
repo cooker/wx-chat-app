@@ -15,9 +15,26 @@ const mainRef = ref(null)
 const sentinelRef = ref(null)
 let loadMoreObserver = null
 
-/** 桌面端滚轮：视口接近文档底部时加载更多 */
-const SCROLL_NEAR_BOTTOM_PX = 240
-let scrollLoadRaf = 0
+/** 接近文档底部时触发加载更多（移动端阈值略大，便于惯性滚动也能命中） */
+const SCROLL_NEAR_BOTTOM_DESKTOP = 240
+const SCROLL_NEAR_BOTTOM_TOUCH = 380
+
+function preferTouchUi() {
+  try {
+    return window.matchMedia('(pointer: coarse), (hover: none)').matches
+  } catch {
+    return false
+  }
+}
+
+function scrollNearBottomThreshold() {
+  return preferTouchUi() ? SCROLL_NEAR_BOTTOM_TOUCH : SCROLL_NEAR_BOTTOM_DESKTOP
+}
+
+/** IntersectionObserver rootMargin：移动端加大底部预取，上拉更早触发 */
+function loadMoreIoRootMargin() {
+  return preferTouchUi() ? '80px 0px min(52vh, 520px) 0px' : '400px 0px 220px 0px'
+}
 
 const pullOffset = ref(0)
 const pullActive = ref(false)
@@ -83,7 +100,10 @@ function checkScrollLoadMore() {
   const doc = document.documentElement
   const body = document.body
   const scrollTop = window.scrollY || doc.scrollTop || body.scrollTop || 0
-  const viewH = window.innerHeight || doc.clientHeight || 0
+  const viewH =
+    preferTouchUi() && window.visualViewport?.height
+      ? window.visualViewport.height
+      : window.innerHeight || doc.clientHeight || 0
   const fullH = Math.max(
     body.scrollHeight,
     body.offsetHeight,
@@ -91,17 +111,41 @@ function checkScrollLoadMore() {
     doc.offsetHeight,
     doc.clientHeight
   )
-  if (scrollTop + viewH >= fullH - SCROLL_NEAR_BOTTOM_PX) {
+  const threshold = scrollNearBottomThreshold()
+  if (scrollTop + viewH >= fullH - threshold) {
     void loadMore()
   }
 }
 
-function onWindowScrollLoadMore() {
+let scrollLoadRaf = 0
+
+function scheduleScrollLoadCheck() {
   if (scrollLoadRaf) return
   scrollLoadRaf = requestAnimationFrame(() => {
     scrollLoadRaf = 0
     checkScrollLoadMore()
   })
+}
+
+/** 手指滑动过程中同步检测底部（弥补部分机型惯性阶段 scroll 稀疏） */
+function onTouchMoveScrollHint() {
+  scheduleScrollLoadCheck()
+}
+
+function bindScrollLoadListeners() {
+  window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true, capture: true })
+  document.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true, capture: true })
+  window.visualViewport?.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true })
+  window.visualViewport?.addEventListener('resize', scheduleScrollLoadCheck, { passive: true })
+  window.addEventListener('touchmove', onTouchMoveScrollHint, { passive: true })
+}
+
+function unbindScrollLoadListeners() {
+  window.removeEventListener('scroll', scheduleScrollLoadCheck, { capture: true })
+  document.removeEventListener('scroll', scheduleScrollLoadCheck, { capture: true })
+  window.visualViewport?.removeEventListener('scroll', scheduleScrollLoadCheck)
+  window.visualViewport?.removeEventListener('resize', scheduleScrollLoadCheck)
+  window.removeEventListener('touchmove', onTouchMoveScrollHint)
 }
 
 function disconnectLoadMoreObserver() {
@@ -123,7 +167,7 @@ watch(
           loadMore()
         }
       },
-      { root: null, rootMargin: '400px 0px 200px 0px', threshold: 0 }
+      { root: null, rootMargin: loadMoreIoRootMargin(), threshold: 0 }
     )
     loadMoreObserver.observe(target)
   },
@@ -189,13 +233,13 @@ function unbindPullListeners() {
 
 onMounted(() => {
   bindPullListeners()
-  window.addEventListener('scroll', onWindowScrollLoadMore, { passive: true })
+  bindScrollLoadListeners()
 })
 
 onBeforeUnmount(() => {
   disconnectLoadMoreObserver()
   unbindPullListeners()
-  window.removeEventListener('scroll', onWindowScrollLoadMore)
+  unbindScrollLoadListeners()
   if (scrollLoadRaf) {
     cancelAnimationFrame(scrollLoadRaf)
     scrollLoadRaf = 0
