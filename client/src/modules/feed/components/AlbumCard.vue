@@ -12,10 +12,12 @@ const emit = defineEmits(['select'])
 <template>
   <article class="card" @click="emit('select', item.id)">
     <img v-if="item.coverDisplay" class="cover" :src="item.coverDisplay" :alt="item.title" />
-    <span class="cover-id">#{{ item.id }}</span>
-    <span class="cover-count">{{ item.photoText }}</span>
-    <div class="card-overlay">
-      <h3>{{ item.title }}</h3>
+    <div class="card-body">
+      <h3 class="card-title">{{ item.title }}</h3>
+      <div class="card-meta">
+        <span class="card-author">{{ item.authorText }}</span>
+        <span class="card-like">♡ {{ item.likeText }}</span>
+      </div>
     </div>
   </article>
 </template>

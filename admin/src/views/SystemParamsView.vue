@@ -7,21 +7,27 @@ import {
   fetchImageCdnSetting,
   saveImageCdnSetting,
   fetchFeedPageSetting,
-  saveFeedPageSetting
+  saveFeedPageSetting,
+  fetchHotAlbumSizeSetting,
+  saveHotAlbumSizeSetting
 } from '../api/systemSettingsApi'
 import { getImageCdnBase, setImageCdnBase } from '../utils/assetUrl'
 
 const mode = ref('local')
 const cdnDomain = ref('')
 const feedPageSize = ref(8)
+const hotAlbumSize = ref(8)
 
 const loading = ref(false)
 const savingCdn = ref(false)
 const savingFeed = ref(false)
+const savingHot = ref(false)
 const cdnError = ref('')
 const feedError = ref('')
+const hotError = ref('')
 const cdnSavedHint = ref('')
 const feedSavedHint = ref('')
+const hotSavedHint = ref('')
 
 const examplePath = '/uploads/albums/demo/cover.webp'
 
@@ -61,7 +67,11 @@ onMounted(async () => {
   cdnError.value = ''
   feedError.value = ''
   try {
-    const [cdn, feed] = await Promise.all([fetchImageCdnSetting(), fetchFeedPageSetting()])
+    const [cdn, feed, hot] = await Promise.all([
+      fetchImageCdnSetting(),
+      fetchFeedPageSetting(),
+      fetchHotAlbumSizeSetting()
+    ])
     const base = typeof cdn.imageCdnBase === 'string' ? cdn.imageCdnBase : ''
     setImageCdnBase(base)
     if (base) {
@@ -74,6 +84,9 @@ onMounted(async () => {
     const fps = feed?.feedPageSize
     const n = typeof fps === 'number' ? fps : parseInt(String(fps ?? '8'), 10)
     feedPageSize.value = Number.isFinite(n) ? Math.min(100, Math.max(1, n)) : 8
+    const has = hot?.hotAlbumSize
+    const h = typeof has === 'number' ? has : parseInt(String(has ?? '8'), 10)
+    hotAlbumSize.value = Number.isFinite(h) ? Math.min(30, Math.max(1, h)) : 8
   } catch (e) {
     cdnError.value = e?.response?.data?.message || e?.message || '加载配置失败'
   } finally {
@@ -127,6 +140,30 @@ const onSaveFeedPage = async () => {
     feedError.value = e?.response?.data?.message || e?.message || '保存失败'
   } finally {
     savingFeed.value = false
+  }
+}
+
+const onSaveHotAlbumSize = async () => {
+  savingHot.value = true
+  hotError.value = ''
+  hotSavedHint.value = ''
+  const raw = parseInt(String(hotAlbumSize.value).trim(), 10)
+  if (!Number.isFinite(raw) || raw < 1 || raw > 30) {
+    hotError.value = '请输入 1～30 之间的整数'
+    savingHot.value = false
+    return
+  }
+  try {
+    const out = await saveHotAlbumSizeSetting(raw)
+    const stored = out?.hotAlbumSize
+    if (typeof stored === 'number') {
+      hotAlbumSize.value = stored
+    }
+    hotSavedHint.value = '已保存'
+  } catch (e) {
+    hotError.value = e?.response?.data?.message || e?.message || '保存失败'
+  } finally {
+    savingHot.value = false
   }
 }
 </script>
@@ -194,6 +231,27 @@ const onSaveFeedPage = async () => {
           <span v-if="feedSavedHint" class="ok">{{ feedSavedHint }}</span>
         </div>
         <p v-if="feedError" class="err">{{ feedError }}</p>
+      </section>
+
+      <section class="block block-spaced">
+        <h3>热门相册</h3>
+        <p class="hint">控制访客端首页热门横滑区展示数量（1～30）。热门区固定请求，不参与推荐瀑布流分页。</p>
+        <div class="cdn-field">
+          <label class="field-label">热门数量</label>
+          <InputText
+            v-model="hotAlbumSize"
+            type="number"
+            class="cdn-input feed-page-input"
+            :min="1"
+            :max="30"
+            @update:model-value="hotSavedHint = ''"
+          />
+        </div>
+        <div class="actions">
+          <Button label="保存热门设置" icon="pi pi-save" :loading="savingHot" :disabled="loading" @click="onSaveHotAlbumSize" />
+          <span v-if="hotSavedHint" class="ok">{{ hotSavedHint }}</span>
+        </div>
+        <p v-if="hotError" class="err">{{ hotError }}</p>
       </section>
     </article>
   </AdminLayout>

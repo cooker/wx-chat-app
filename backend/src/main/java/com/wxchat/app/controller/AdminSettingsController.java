@@ -49,4 +49,16 @@ public class AdminSettingsController {
         int stored = systemSettingsService.setFeedPageSize(raw);
         return ApiResponse.success(Map.of("feedPageSize", stored));
     }
+
+    @GetMapping("/hot-album-size")
+    public ApiResponse<Map<String, Integer>> getHotAlbumSize() {
+        return ApiResponse.success(Map.of("hotAlbumSize", systemSettingsService.getHotAlbumSize()));
+    }
+
+    @PutMapping("/hot-album-size")
+    public ApiResponse<Map<String, Integer>> putHotAlbumSize(@RequestBody Map<String, Object> body) {
+        Object raw = body == null ? null : body.get("hotAlbumSize");
+        int stored = systemSettingsService.setHotAlbumSize(raw);
+        return ApiResponse.success(Map.of("hotAlbumSize", stored));
+    }
 }

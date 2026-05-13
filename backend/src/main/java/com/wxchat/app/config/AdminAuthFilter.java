@@ -87,6 +87,9 @@ public class AdminAuthFilter extends OncePerRequestFilter {
         if ("GET".equalsIgnoreCase(method) && "/api/albums".equals(path)) {
             return true;
         }
+        if ("GET".equalsIgnoreCase(method) && "/api/albums/hot".equals(path)) {
+            return true;
+        }
         if ("GET".equalsIgnoreCase(method) && path.startsWith("/api/albums/") && path.matches("^/api/albums/\\d+$")) {
             return true;
         }

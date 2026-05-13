@@ -26,7 +26,8 @@ class ImageCdnSettingsApiTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.imageCdnBase").exists())
                 .andExpect(jsonPath("$.data.uploadServerOrigin").exists())
-                .andExpect(jsonPath("$.data.feedPageSize").exists());
+                .andExpect(jsonPath("$.data.feedPageSize").exists())
+                .andExpect(jsonPath("$.data.hotAlbumSize").exists());
     }
 
     @Test
@@ -76,5 +77,27 @@ class ImageCdnSettingsApiTest {
 
         mockMvc.perform(get("/api/public/config"))
                 .andExpect(jsonPath("$.data.imageCdnBase").value(""));
+    }
+
+    @Test
+    void shouldRoundTripHotAlbumSize() throws Exception {
+        mockMvc.perform(
+                        put("/api/admin/settings/hot-album-size")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"hotAlbumSize\":6}")
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hotAlbumSize").value(6));
+
+        mockMvc.perform(get("/api/public/config"))
+                .andExpect(jsonPath("$.data.hotAlbumSize").value("6"));
+
+        mockMvc.perform(
+                        put("/api/admin/settings/hot-album-size")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"hotAlbumSize\":8}")
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hotAlbumSize").value(8));
     }
 }

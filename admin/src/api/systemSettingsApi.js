@@ -53,3 +53,13 @@ export async function saveFeedPageSetting(feedPageSize) {
   const { data } = await http.put('/admin/settings/feed-page', { feedPageSize })
   return data?.data ?? {}
 }
+
+export async function fetchHotAlbumSizeSetting() {
+  const { data } = await http.get('/admin/settings/hot-album-size')
+  return data?.data ?? { hotAlbumSize: 8 }
+}
+
+export async function saveHotAlbumSizeSetting(hotAlbumSize) {
+  const { data } = await http.put('/admin/settings/hot-album-size', { hotAlbumSize })
+  return data?.data ?? {}
+}

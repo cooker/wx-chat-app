@@ -157,6 +157,43 @@ class AlbumControllerTest {
                 .andExpect(jsonPath("$.code").value(0));
     }
 
+    @Test
+    void shouldListHotAlbumsByViews() throws Exception {
+        mockMvc.perform(delete("/api/analytics/events"))
+                .andExpect(status().isOk());
+
+        String folderA = "hot-a-" + UUID.randomUUID();
+        String folderB = "hot-b-" + UUID.randomUUID();
+        String coverA = uploadAndGetFileUrl(new MockMultipartFile(
+                "file",
+                "hot-a.png",
+                MediaType.IMAGE_PNG_VALUE,
+                tinyPng(0x00AA11)
+        ), folderA);
+        String coverB = uploadAndGetFileUrl(new MockMultipartFile(
+                "file",
+                "hot-b.png",
+                MediaType.IMAGE_PNG_VALUE,
+                tinyPng(0x1100AA)
+        ), folderB);
+
+        long albumA = createAlbumAndGetId("热门A", folderA, coverA);
+        long albumB = createAlbumAndGetId("热门B", folderB, coverB);
+
+        track(albumA, "visitor-a");
+        track(albumA, "visitor-b");
+        track(albumA, "visitor-c");
+        track(albumB, "visitor-d");
+
+        mockMvc.perform(get("/api/albums/hot").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.items[0].id").value(albumA))
+                .andExpect(jsonPath("$.data.items[0].views").value(3))
+                .andExpect(jsonPath("$.data.items[1].id").value(albumB))
+                .andExpect(jsonPath("$.data.items[1].views").value(1));
+    }
+
     private String uploadAndGetFileUrl(MockMultipartFile file, String folder) throws Exception {
         MvcResult result = mockMvc.perform(multipart("/api/files/images").file(file).param("folder", folder))
                 .andExpect(status().isOk())
@@ -165,6 +202,37 @@ class AlbumControllerTest {
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("data").path("url").asText();
+    }
+
+    private long createAlbumAndGetId(String title, String folder, String coverUrl) throws Exception {
+        String body = """
+                {
+                  "title": "%s",
+                  "description": "desc",
+                  "coverUrl": "%s",
+                  "imageFolder": "%s"
+                }
+                """.formatted(title, coverUrl, folder);
+        MvcResult createResult = mockMvc.perform(post("/api/albums")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
+    }
+
+    private void track(long albumId, String visitorId) throws Exception {
+        String body = """
+                {
+                  "albumId": %d,
+                  "visitorId": "%s"
+                }
+                """.formatted(albumId, visitorId);
+        mockMvc.perform(post("/api/analytics/track")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
     }
 
     private static byte[] tinyPng(int rgb) throws IOException {

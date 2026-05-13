@@ -32,12 +32,27 @@ export function useFeedAlbums() {
       ...item,
       coverDisplay: toAssetUrl(item.coverUrl),
       ratio: ratioMap.value[toAssetUrl(item.coverUrl)] ?? (0.95 + ((item.id % 4) * 0.1)),
-      photoText: `${item.imageCount || 0} Photos`
+      photoText: `${item.imageCount || 0}张`,
+      authorText: item.createdBy || item.ownerName || '匿名用户',
+      likeText: item.views != null ? String(item.views) : '--'
     }))
   )
 
   const calcItemHeight = (item, width) => Math.round(width * (item.ratio || 1.2))
   const calcSkeletonHeight = (item, width) => Math.round(width * (item.ratio || 1.1))
+
+  const dedupeById = (items) => {
+    const map = new Map()
+    for (const item of items || []) {
+      if (!item) continue
+      const key =
+        item.id != null && item.id !== ''
+          ? `id:${String(item.id)}`
+          : `fallback:${String(item.coverUrl || '')}::${String(item.title || '')}`
+      map.set(key, item)
+    }
+    return [...map.values()]
+  }
 
   const load = async (reset = true) => {
     if (!reset) {
@@ -66,10 +81,10 @@ export function useFeedAlbums() {
       const totalValid = Number.isFinite(totalNum) && totalNum >= 0
 
       if (reset) {
-        list.value = items
+        list.value = dedupeById(items)
         nextApiPage.value = 2
       } else if (items.length > 0) {
-        list.value = [...list.value, ...items]
+        list.value = dedupeById([...list.value, ...items])
         nextApiPage.value = apiPage + 1
       }
 

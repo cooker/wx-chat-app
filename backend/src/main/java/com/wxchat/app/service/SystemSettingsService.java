@@ -10,9 +10,13 @@ import java.net.URI;
 public class SystemSettingsService {
     static final String KEY_IMAGE_CDN_BASE = "image_cdn_base";
     static final String KEY_FEED_PAGE_SIZE = "feed_page_size";
+    static final String KEY_HOT_ALBUM_SIZE = "hot_album_size";
     static final int FEED_PAGE_SIZE_DEFAULT = 8;
     static final int FEED_PAGE_SIZE_MIN = 1;
     static final int FEED_PAGE_SIZE_MAX = 100;
+    static final int HOT_ALBUM_SIZE_DEFAULT = 8;
+    static final int HOT_ALBUM_SIZE_MIN = 1;
+    static final int HOT_ALBUM_SIZE_MAX = 30;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -38,6 +42,11 @@ public class SystemSettingsService {
                 "INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
                 KEY_FEED_PAGE_SIZE,
                 String.valueOf(FEED_PAGE_SIZE_DEFAULT)
+        );
+        jdbcTemplate.update(
+                "INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
+                KEY_HOT_ALBUM_SIZE,
+                String.valueOf(HOT_ALBUM_SIZE_DEFAULT)
         );
     }
 
@@ -145,5 +154,43 @@ public class SystemSettingsService {
 
     private static int clampFeedPageSize(int n) {
         return Math.max(FEED_PAGE_SIZE_MIN, Math.min(FEED_PAGE_SIZE_MAX, n));
+    }
+
+    public int getHotAlbumSize() {
+        String raw = jdbcTemplate.query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = ?",
+                rs -> rs.next() ? rs.getString(1) : "",
+                KEY_HOT_ALBUM_SIZE
+        );
+        return clampHotAlbumSize(parseHotAlbumSize(raw));
+    }
+
+    @Transactional
+    public int setHotAlbumSize(Object raw) {
+        int n = clampHotAlbumSize(parseHotAlbumSize(raw == null ? "" : String.valueOf(raw)));
+        jdbcTemplate.update(
+                """
+                        INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)
+                        ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+                        """,
+                KEY_HOT_ALBUM_SIZE,
+                String.valueOf(n)
+        );
+        return n;
+    }
+
+    private static int parseHotAlbumSize(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return HOT_ALBUM_SIZE_DEFAULT;
+        }
+        try {
+            return Integer.parseInt(raw.trim(), 10);
+        } catch (NumberFormatException e) {
+            return HOT_ALBUM_SIZE_DEFAULT;
+        }
+    }
+
+    private static int clampHotAlbumSize(int n) {
+        return Math.max(HOT_ALBUM_SIZE_MIN, Math.min(HOT_ALBUM_SIZE_MAX, n));
     }
 }

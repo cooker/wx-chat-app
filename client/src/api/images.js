@@ -9,6 +9,7 @@ const http = axios.create({
 let imageCdnBase = ''
 let uploadServerOrigin = ''
 let feedPageSize = 8
+let hotAlbumSize = 8
 
 function stripTrailingSlashes(s) {
   let t = s
@@ -63,6 +64,19 @@ export function getFeedPageSize() {
   return feedPageSize
 }
 
+export function setHotAlbumSize(value) {
+  const n = typeof value === 'number' ? value : parseInt(String(value ?? '').trim(), 10)
+  if (!Number.isFinite(n) || n < 1) {
+    hotAlbumSize = 8
+    return
+  }
+  hotAlbumSize = Math.min(30, Math.max(1, Math.floor(n)))
+}
+
+export function getHotAlbumSize() {
+  return hotAlbumSize
+}
+
 export async function loadPublicConfig() {
   try {
     const { data } = await http.get('/public/config')
@@ -76,10 +90,17 @@ export async function loadPublicConfig() {
     } else {
       setFeedPageSize(8)
     }
+    const has = d.hotAlbumSize
+    if (has != null && has !== '') {
+      setHotAlbumSize(typeof has === 'number' ? has : String(has))
+    } else {
+      setHotAlbumSize(8)
+    }
   } catch {
     setImageCdnBase('')
     setUploadServerOrigin(inferOriginFromViteApiBase())
     setFeedPageSize(8)
+    setHotAlbumSize(8)
   }
 }
 
@@ -90,6 +111,15 @@ export function fetchAlbums(params = {}) {
     params: {
       page: Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1,
       pageSize: Number.isFinite(pageSize) && pageSize >= 1 ? Math.min(100, Math.floor(pageSize)) : getFeedPageSize()
+    }
+  })
+}
+
+export function fetchHotAlbums(params = {}) {
+  const size = params.size != null ? Number(params.size) : getHotAlbumSize()
+  return http.get('/albums/hot', {
+    params: {
+      size: Number.isFinite(size) && size >= 1 ? Math.min(30, Math.floor(size)) : getHotAlbumSize()
     }
   })
 }

@@ -11,7 +11,7 @@
   margin-top: 16px;
   margin-bottom: max(24px, env(safe-area-inset-bottom, 0px));
   text-align: center;
-  color: #cbd5e1;
+  color: #6b7280;
   font-size: 13px;
 }
 
@@ -20,18 +20,17 @@
   min-height: 44px;
   padding: 10px 20px;
   font-size: 14px;
-  border-radius: 10px;
-  border: 1px solid #334155;
-  background: #111827;
-  color: #e2e8f0;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #475569;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .feed-load-more-btn:hover:not(:disabled) {
-  background: #1e293b;
-  border-color: #475569;
-  color: #f8fafc;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .feed-load-more-btn:disabled {
@@ -42,7 +41,7 @@
 .feed-status-end {
   display: inline-block;
   padding: 8px 0;
-  color: #94a3b8;
+  color: #9ca3af;
 }
 
 .feed-scroll-sentinel {
@@ -57,13 +56,13 @@
   align-items: flex-end;
   justify-content: center;
   transition: height 0.2s ease;
-  color: #94a3b8;
+  color: #9ca3af;
   font-size: 13px;
   user-select: none;
 }
 
 .pull-refresh-track--active {
-  color: #cbd5e1;
+  color: #6b7280;
 }
 
 .pull-refresh-hint {
@@ -73,6 +72,6 @@
 .feed-refresh-bar {
   text-align: center;
   font-size: 13px;
-  color: #94a3b8;
+  color: #6b7280;
   padding: 6px 0 10px;
 }

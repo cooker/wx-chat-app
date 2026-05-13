@@ -69,6 +69,40 @@ public class AlbumService {
         );
     }
 
+    public Map<String, Object> listHotAlbums(int size) {
+        int safeSize = Math.max(1, Math.min(size, 30));
+        List<Map<String, Object>> rows = jdbcTemplate.query(
+                """
+                        SELECT a.id, a.title, a.description,
+                               COALESCE(a.cover_url, '') AS cover_url,
+                               COALESCE(a.image_folder, '') AS image_folder,
+                               a.created_at, a.updated_at,
+                               COUNT(e.id) AS views
+                        FROM albums a
+                        LEFT JOIN access_events e ON e.album_id = a.id
+                        GROUP BY a.id, a.title, a.description, a.cover_url, a.image_folder, a.created_at, a.updated_at
+                        ORDER BY views DESC, a.updated_at DESC
+                        LIMIT ?
+                        """,
+                (rs, rowNum) -> Map.of(
+                        "id", rs.getLong("id"),
+                        "title", rs.getString("title"),
+                        "description", rs.getString("description"),
+                        "coverUrl", rs.getString("cover_url"),
+                        "imageFolder", rs.getString("image_folder"),
+                        "imageCount", fileStorageService.listIndexedImages(rs.getString("image_folder")).size(),
+                        "views", rs.getLong("views"),
+                        "createdAt", rs.getLong("created_at"),
+                        "updatedAt", rs.getLong("updated_at")
+                ),
+                safeSize
+        );
+        return Map.of(
+                "items", rows,
+                "size", safeSize
+        );
+    }
+
     public Map<String, Object> getAlbum(long id) {
         Map<String, Object> album = jdbcTemplate.query(
                 """

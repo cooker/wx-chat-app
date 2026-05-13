@@ -33,6 +33,13 @@ public class AlbumController {
         return ApiResponse.success(albumService.listAlbums(page, pageSize));
     }
 
+    @GetMapping("/hot")
+    public ApiResponse<Map<String, Object>> hot(
+            @RequestParam(defaultValue = "8") int size
+    ) {
+        return ApiResponse.success(albumService.listHotAlbums(size));
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<Map<String, Object>> detail(@PathVariable long id) {
         Map<String, Object> album = albumService.getAlbum(id);
