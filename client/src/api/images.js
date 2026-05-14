@@ -10,6 +10,9 @@ let imageCdnBase = ''
 let uploadServerOrigin = ''
 let feedPageSize = 8
 let hotAlbumSize = 8
+let siteTopTitle = ''
+let siteTopDescription = ''
+let headerScript = ''
 
 function stripTrailingSlashes(s) {
   let t = s
@@ -77,6 +80,57 @@ export function getHotAlbumSize() {
   return hotAlbumSize
 }
 
+export function getSiteTopTitle() {
+  return siteTopTitle
+}
+
+export function getSiteTopDescription() {
+  return siteTopDescription
+}
+
+function setSiteTopTitle(value) {
+  siteTopTitle = typeof value === 'string' ? value : ''
+}
+
+function setSiteTopDescription(value) {
+  siteTopDescription = typeof value === 'string' ? value : ''
+}
+
+function setHeaderScript(value) {
+  headerScript = typeof value === 'string' ? value : ''
+}
+
+const HEADER_SCRIPT_MARKER = 'data-wx-public-header'
+
+export function injectPublicHeaderScript() {
+  if (typeof document === 'undefined') return
+  document.querySelectorAll(`script[${HEADER_SCRIPT_MARKER}]`).forEach((el) => el.remove())
+  const raw = (headerScript || '').trim()
+  if (!raw) return
+  const lower = raw.toLowerCase()
+  if (lower.includes('<script')) {
+    const doc = new DOMParser().parseFromString(raw, 'text/html')
+    doc.querySelectorAll('script').forEach((node) => {
+      const el = document.createElement('script')
+      el.setAttribute(HEADER_SCRIPT_MARKER, '1')
+      const src = node.getAttribute('src')
+      if (src) el.src = src
+      const type = node.getAttribute('type')
+      if (type) el.type = type
+      const nonce = node.getAttribute('nonce')
+      if (nonce) el.setAttribute('nonce', nonce)
+      const text = node.textContent
+      if (text) el.textContent = text
+      document.head.appendChild(el)
+    })
+  } else {
+    const el = document.createElement('script')
+    el.setAttribute(HEADER_SCRIPT_MARKER, '1')
+    el.textContent = raw
+    document.head.appendChild(el)
+  }
+}
+
 export async function loadPublicConfig() {
   try {
     const { data } = await http.get('/public/config')
@@ -96,11 +150,19 @@ export async function loadPublicConfig() {
     } else {
       setHotAlbumSize(8)
     }
+    setSiteTopTitle(typeof d.topTitle === 'string' ? d.topTitle : '')
+    setSiteTopDescription(typeof d.topDescription === 'string' ? d.topDescription : '')
+    setHeaderScript(typeof d.headerScript === 'string' ? d.headerScript : '')
+    injectPublicHeaderScript()
   } catch {
     setImageCdnBase('')
     setUploadServerOrigin(inferOriginFromViteApiBase())
     setFeedPageSize(8)
     setHotAlbumSize(8)
+    setSiteTopTitle('')
+    setSiteTopDescription('')
+    setHeaderScript('')
+    injectPublicHeaderScript()
   }
 }
 

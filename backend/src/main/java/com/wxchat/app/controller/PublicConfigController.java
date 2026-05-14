@@ -32,11 +32,17 @@ public class PublicConfigController {
         String uploadServerOrigin = resolveUploadServerOrigin(request, publicBaseUrlOverride);
         int feedPageSize = systemSettingsService.getFeedPageSize();
         int hotAlbumSize = systemSettingsService.getHotAlbumSize();
+        String siteTopTitle = systemSettingsService.getSiteTopTitle();
+        String siteTopDescription = systemSettingsService.getSiteTopDescription();
+        String siteHeaderScript = systemSettingsService.getSiteHeaderScript();
         Map<String, String> data = new LinkedHashMap<>();
         data.put("imageCdnBase", imageCdnBase);
         data.put("uploadServerOrigin", uploadServerOrigin);
         data.put("feedPageSize", String.valueOf(feedPageSize));
         data.put("hotAlbumSize", String.valueOf(hotAlbumSize));
+        data.put("topTitle", siteTopTitle);
+        data.put("topDescription", siteTopDescription);
+        data.put("headerScript", siteHeaderScript);
         return ApiResponse.success(data);
     }
 

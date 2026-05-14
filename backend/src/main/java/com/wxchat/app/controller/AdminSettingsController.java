@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -60,5 +61,37 @@ public class AdminSettingsController {
         Object raw = body == null ? null : body.get("hotAlbumSize");
         int stored = systemSettingsService.setHotAlbumSize(raw);
         return ApiResponse.success(Map.of("hotAlbumSize", stored));
+    }
+
+    @GetMapping("/site-header")
+    public ApiResponse<Map<String, String>> getSiteHeader() {
+        Map<String, String> data = new LinkedHashMap<>();
+        data.put("topTitle", systemSettingsService.getSiteTopTitle());
+        data.put("topDescription", systemSettingsService.getSiteTopDescription());
+        data.put("headerScript", systemSettingsService.getSiteHeaderScript());
+        return ApiResponse.success(data);
+    }
+
+    @PutMapping("/site-header")
+    public ApiResponse<Map<String, String>> putSiteHeader(@RequestBody Map<String, Object> body) {
+        String topTitle = stringField(body, "topTitle");
+        String topDescription = stringField(body, "topDescription");
+        String headerScript = stringField(body, "headerScript");
+        String storedTitle = systemSettingsService.setSiteTopTitle(topTitle);
+        String storedDesc = systemSettingsService.setSiteTopDescription(topDescription);
+        String storedScript = systemSettingsService.setSiteHeaderScript(headerScript);
+        Map<String, String> data = new LinkedHashMap<>();
+        data.put("topTitle", storedTitle);
+        data.put("topDescription", storedDesc);
+        data.put("headerScript", storedScript);
+        return ApiResponse.success(data);
+    }
+
+    private static String stringField(Map<String, Object> body, String key) {
+        if (body == null) {
+            return "";
+        }
+        Object v = body.get(key);
+        return v == null ? "" : String.valueOf(v);
     }
 }

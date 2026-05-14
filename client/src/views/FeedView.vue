@@ -3,9 +3,10 @@ import { VirtualWaterfall } from '@lhlyu/vue-virtual-waterfall'
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import AlbumCard from '../modules/feed/components/AlbumCard.vue'
+import LazyImage from '../components/LazyImage.vue'
 import { WATERFALL_LAYOUT } from '../modules/feed/constants/waterfall'
 import { useFeedAlbums } from '../modules/feed/composables/useFeedAlbums'
-import { fetchHotAlbums, getHotAlbumSize, toAssetUrl } from '../api/images'
+import { fetchHotAlbums, getHotAlbumSize, getSiteTopDescription, getSiteTopTitle, toAssetUrl } from '../api/images'
 
 const PULL_THRESHOLD = 56
 const PULL_MAX = 96
@@ -57,6 +58,14 @@ const {
   loadMore
 } = useFeedAlbums()
 
+const heroTitle = computed(() => {
+  const t = getSiteTopTitle()?.trim()
+  return t || '相册'
+})
+const heroSubtitle = computed(() => {
+  const t = getSiteTopDescription()?.trim()
+  return t || '记录生活，珍藏美好'
+})
 const normalizedKeyword = computed(() => keyword.value.trim().toLowerCase())
 const searching = computed(() => normalizedKeyword.value.length > 0)
 const waterfallModeKey = computed(() => (searching.value ? 'search' : 'default'))
@@ -283,8 +292,8 @@ onBeforeUnmount(() => {
 
     <section class="feed-hero">
       <div>
-        <h1 class="feed-hero-title">相册</h1>
-        <p class="feed-hero-subtitle">记录生活，珍藏美好</p>
+        <h1 class="feed-hero-title">{{ heroTitle }}</h1>
+        <p class="feed-hero-subtitle">{{ heroSubtitle }}</p>
       </div>
       <button type="button" class="feed-icon-btn" :disabled="loading || refreshing" @click="refreshAll">
         {{ refreshing ? '...' : '↻' }}
@@ -315,7 +324,7 @@ onBeforeUnmount(() => {
           class="hot-card"
           @click="goAlbumDetail(album.id)"
         >
-          <img :src="album.coverDisplay" :alt="album.title" class="hot-card-cover" />
+          <LazyImage layout="fill" img-class="hot-card-cover" :src="album.coverDisplay" :alt="album.title" />
           <div class="hot-card-overlay">
             <strong>{{ album.title }}</strong>
             <span>{{ album.photoText }}</span>

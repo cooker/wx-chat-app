@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import 'swiper/css'
 import { toAssetUrl } from '../../../api/images'
+import LazyImage from '../../../components/LazyImage.vue'
 
 const props = defineProps({
   visible: {
@@ -53,7 +54,12 @@ const markdownDescription = computed(() =>
     <Swiper :initial-slide="activeIndex" class="viewer-swiper">
       <SwiperSlide v-for="(item, idx) in images" :key="idx">
         <div class="slide-content">
-          <img class="preview-image" :src="toAssetUrl(item.url)" :alt="item.originalName || title" />
+          <LazyImage
+            layout="contain"
+            img-class="preview-image"
+            :src="toAssetUrl(item.url)"
+            :alt="item.originalName || title"
+          />
         </div>
       </SwiperSlide>
     </Swiper>

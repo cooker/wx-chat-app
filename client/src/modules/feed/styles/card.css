@@ -14,16 +14,6 @@
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
-.cover {
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: cover;
-  object-position: center;
-  aspect-ratio: 1/1.18;
-  background: #f3f4f6;
-}
-
 .card-body {
   padding: 8px 9px 10px;
 }

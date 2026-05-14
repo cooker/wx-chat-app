@@ -11,6 +11,12 @@ public class SystemSettingsService {
     static final String KEY_IMAGE_CDN_BASE = "image_cdn_base";
     static final String KEY_FEED_PAGE_SIZE = "feed_page_size";
     static final String KEY_HOT_ALBUM_SIZE = "hot_album_size";
+    static final String KEY_SITE_TOP_TITLE = "site_top_title";
+    static final String KEY_SITE_TOP_DESCRIPTION = "site_top_description";
+    static final String KEY_SITE_HEADER_SCRIPT = "site_header_script";
+    static final int SITE_TOP_TITLE_MAX = 200;
+    static final int SITE_TOP_DESCRIPTION_MAX = 2000;
+    static final int SITE_HEADER_SCRIPT_MAX = 100_000;
     static final int FEED_PAGE_SIZE_DEFAULT = 8;
     static final int FEED_PAGE_SIZE_MIN = 1;
     static final int FEED_PAGE_SIZE_MAX = 100;
@@ -47,6 +53,18 @@ public class SystemSettingsService {
                 "INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
                 KEY_HOT_ALBUM_SIZE,
                 String.valueOf(HOT_ALBUM_SIZE_DEFAULT)
+        );
+        jdbcTemplate.update(
+                "INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, '')",
+                KEY_SITE_TOP_TITLE
+        );
+        jdbcTemplate.update(
+                "INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, '')",
+                KEY_SITE_TOP_DESCRIPTION
+        );
+        jdbcTemplate.update(
+                "INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, '')",
+                KEY_SITE_HEADER_SCRIPT
         );
     }
 
@@ -192,5 +210,69 @@ public class SystemSettingsService {
 
     private static int clampHotAlbumSize(int n) {
         return Math.max(HOT_ALBUM_SIZE_MIN, Math.min(HOT_ALBUM_SIZE_MAX, n));
+    }
+
+    public String getSiteTopTitle() {
+        return readTextSetting(KEY_SITE_TOP_TITLE);
+    }
+
+    @Transactional
+    public String setSiteTopTitle(String raw) {
+        String stored = clampText(raw, SITE_TOP_TITLE_MAX);
+        upsertText(KEY_SITE_TOP_TITLE, stored);
+        return stored;
+    }
+
+    public String getSiteTopDescription() {
+        return readTextSetting(KEY_SITE_TOP_DESCRIPTION);
+    }
+
+    @Transactional
+    public String setSiteTopDescription(String raw) {
+        String stored = clampText(raw, SITE_TOP_DESCRIPTION_MAX);
+        upsertText(KEY_SITE_TOP_DESCRIPTION, stored);
+        return stored;
+    }
+
+    public String getSiteHeaderScript() {
+        return readTextSetting(KEY_SITE_HEADER_SCRIPT);
+    }
+
+    @Transactional
+    public String setSiteHeaderScript(String raw) {
+        String stored = clampText(raw, SITE_HEADER_SCRIPT_MAX);
+        upsertText(KEY_SITE_HEADER_SCRIPT, stored);
+        return stored;
+    }
+
+    private String readTextSetting(String key) {
+        String value = jdbcTemplate.query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = ?",
+                rs -> rs.next() ? rs.getString(1) : "",
+                key
+        );
+        return value == null ? "" : value;
+    }
+
+    private void upsertText(String key, String value) {
+        jdbcTemplate.update(
+                """
+                        INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)
+                        ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+                        """,
+                key,
+                value
+        );
+    }
+
+    private static String clampText(String raw, int maxLen) {
+        if (raw == null) {
+            return "";
+        }
+        String t = raw.trim();
+        if (t.length() <= maxLen) {
+            return t;
+        }
+        return t.substring(0, maxLen);
     }
 }

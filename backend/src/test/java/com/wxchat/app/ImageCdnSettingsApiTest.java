@@ -27,7 +27,10 @@ class ImageCdnSettingsApiTest {
                 .andExpect(jsonPath("$.data.imageCdnBase").exists())
                 .andExpect(jsonPath("$.data.uploadServerOrigin").exists())
                 .andExpect(jsonPath("$.data.feedPageSize").exists())
-                .andExpect(jsonPath("$.data.hotAlbumSize").exists());
+                .andExpect(jsonPath("$.data.hotAlbumSize").exists())
+                .andExpect(jsonPath("$.data.topTitle").exists())
+                .andExpect(jsonPath("$.data.topDescription").exists())
+                .andExpect(jsonPath("$.data.headerScript").exists());
     }
 
     @Test
@@ -99,5 +102,35 @@ class ImageCdnSettingsApiTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.hotAlbumSize").value(8));
+    }
+
+    @Test
+    void shouldRoundTripSiteHeader() throws Exception {
+        mockMvc.perform(
+                        put("/api/admin/settings/site-header")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"topTitle\":\"我的相册\",\"topDescription\":\"记录美好\",\"headerScript\":\"console.log('x')\"}"
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.topTitle").value("我的相册"))
+                .andExpect(jsonPath("$.data.topDescription").value("记录美好"))
+                .andExpect(jsonPath("$.data.headerScript").value("console.log('x')"));
+
+        mockMvc.perform(get("/api/public/config"))
+                .andExpect(jsonPath("$.data.topTitle").value("我的相册"))
+                .andExpect(jsonPath("$.data.topDescription").value("记录美好"))
+                .andExpect(jsonPath("$.data.headerScript").value("console.log('x')"));
+
+        mockMvc.perform(
+                        put("/api/admin/settings/site-header")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"topTitle\":\"\",\"topDescription\":\"\",\"headerScript\":\"\"}")
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.topTitle").value(""))
+                .andExpect(jsonPath("$.data.topDescription").value(""))
+                .andExpect(jsonPath("$.data.headerScript").value(""));
     }
 }

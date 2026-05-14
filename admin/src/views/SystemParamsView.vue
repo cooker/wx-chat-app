@@ -3,13 +3,16 @@ import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '../modules/dashboard/components/AdminLayout.vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
 import {
   fetchImageCdnSetting,
   saveImageCdnSetting,
   fetchFeedPageSetting,
   saveFeedPageSetting,
   fetchHotAlbumSizeSetting,
-  saveHotAlbumSizeSetting
+  saveHotAlbumSizeSetting,
+  fetchSiteHeaderSetting,
+  saveSiteHeaderSetting
 } from '../api/systemSettingsApi'
 import { getImageCdnBase, setImageCdnBase } from '../utils/assetUrl'
 
@@ -17,17 +20,15 @@ const mode = ref('local')
 const cdnDomain = ref('')
 const feedPageSize = ref(8)
 const hotAlbumSize = ref(8)
+const siteTopTitle = ref('')
+const siteTopDescription = ref('')
+const siteHeaderScript = ref('')
 
 const loading = ref(false)
-const savingCdn = ref(false)
-const savingFeed = ref(false)
-const savingHot = ref(false)
-const cdnError = ref('')
-const feedError = ref('')
-const hotError = ref('')
-const cdnSavedHint = ref('')
-const feedSavedHint = ref('')
-const hotSavedHint = ref('')
+const saving = ref(false)
+const loadError = ref('')
+const saveError = ref('')
+const saveOkHint = ref('')
 
 const examplePath = '/uploads/albums/demo/cover.webp'
 
@@ -62,15 +63,20 @@ const previewUrl = computed(() => {
   return `${base}${examplePath}`
 })
 
+function clearSaveFeedback() {
+  saveError.value = ''
+  saveOkHint.value = ''
+}
+
 onMounted(async () => {
   loading.value = true
-  cdnError.value = ''
-  feedError.value = ''
+  loadError.value = ''
   try {
-    const [cdn, feed, hot] = await Promise.all([
+    const [cdn, feed, hot, siteHeader] = await Promise.all([
       fetchImageCdnSetting(),
       fetchFeedPageSetting(),
-      fetchHotAlbumSizeSetting()
+      fetchHotAlbumSizeSetting(),
+      fetchSiteHeaderSetting()
     ])
     const base = typeof cdn.imageCdnBase === 'string' ? cdn.imageCdnBase : ''
     setImageCdnBase(base)
@@ -87,8 +93,11 @@ onMounted(async () => {
     const has = hot?.hotAlbumSize
     const h = typeof has === 'number' ? has : parseInt(String(has ?? '8'), 10)
     hotAlbumSize.value = Number.isFinite(h) ? Math.min(30, Math.max(1, h)) : 8
+    siteTopTitle.value = typeof siteHeader?.topTitle === 'string' ? siteHeader.topTitle : ''
+    siteTopDescription.value = typeof siteHeader?.topDescription === 'string' ? siteHeader.topDescription : ''
+    siteHeaderScript.value = typeof siteHeader?.headerScript === 'string' ? siteHeader.headerScript : ''
   } catch (e) {
-    cdnError.value = e?.response?.data?.message || e?.message || '加载配置失败'
+    loadError.value = e?.response?.data?.message || e?.message || '加载配置失败'
   } finally {
     loading.value = false
   }
@@ -96,7 +105,7 @@ onMounted(async () => {
 
 const onModeChange = (next) => {
   mode.value = next
-  cdnSavedHint.value = ''
+  clearSaveFeedback()
   if (next === 'local') {
     cdnDomain.value = ''
   } else if (!cdnDomain.value.trim() && getImageCdnBase()) {
@@ -104,66 +113,73 @@ const onModeChange = (next) => {
   }
 }
 
-const onSaveCdn = async () => {
-  savingCdn.value = true
-  cdnError.value = ''
-  cdnSavedHint.value = ''
-  const payload = mode.value === 'local' ? '' : cdnDomain.value.trim()
-  try {
-    await saveImageCdnSetting(payload)
-    cdnSavedHint.value = '已保存'
-  } catch (e) {
-    cdnError.value = e?.response?.data?.message || e?.message || '保存失败'
-  } finally {
-    savingCdn.value = false
-  }
+function errMsg(e) {
+  return e?.response?.data?.message || e?.message || '保存失败'
 }
 
-const onSaveFeedPage = async () => {
-  savingFeed.value = true
-  feedError.value = ''
-  feedSavedHint.value = ''
-  const raw = parseInt(String(feedPageSize.value).trim(), 10)
-  if (!Number.isFinite(raw) || raw < 1 || raw > 100) {
-    feedError.value = '请输入 1～100 之间的整数'
-    savingFeed.value = false
-    return
-  }
-  try {
-    const out = await saveFeedPageSetting(raw)
-    const stored = out?.feedPageSize
-    if (typeof stored === 'number') {
-      feedPageSize.value = stored
+function validateBeforeSave() {
+  const errs = []
+  if (mode.value === 'cdn') {
+    const d = cdnDomain.value.trim()
+    if (!d) {
+      errs.push('已选择 CDN 时请填写域名或根 URL')
+    } else if (!draftCdnBase()) {
+      errs.push('CDN 域名格式无效（仅支持 http/https）')
     }
-    feedSavedHint.value = '已保存'
-  } catch (e) {
-    feedError.value = e?.response?.data?.message || e?.message || '保存失败'
-  } finally {
-    savingFeed.value = false
   }
+  const feedRaw = parseInt(String(feedPageSize.value).trim(), 10)
+  if (!Number.isFinite(feedRaw) || feedRaw < 1 || feedRaw > 100) {
+    errs.push('访客分页：请输入 1～100 之间的整数')
+  }
+  const hotRaw = parseInt(String(hotAlbumSize.value).trim(), 10)
+  if (!Number.isFinite(hotRaw) || hotRaw < 1 || hotRaw > 30) {
+    errs.push('热门相册：请输入 1～30 之间的整数')
+  }
+  return errs
 }
 
-const onSaveHotAlbumSize = async () => {
-  savingHot.value = true
-  hotError.value = ''
-  hotSavedHint.value = ''
-  const raw = parseInt(String(hotAlbumSize.value).trim(), 10)
-  if (!Number.isFinite(raw) || raw < 1 || raw > 30) {
-    hotError.value = '请输入 1～30 之间的整数'
-    savingHot.value = false
+const onSaveAll = async () => {
+  clearSaveFeedback()
+  const validationErrs = validateBeforeSave()
+  if (validationErrs.length > 0) {
+    saveError.value = validationErrs.join('；')
     return
   }
+
+  const feedRaw = parseInt(String(feedPageSize.value).trim(), 10)
+  const hotRaw = parseInt(String(hotAlbumSize.value).trim(), 10)
+  const cdnPayload = mode.value === 'local' ? '' : cdnDomain.value.trim()
+
+  saving.value = true
   try {
-    const out = await saveHotAlbumSizeSetting(raw)
-    const stored = out?.hotAlbumSize
-    if (typeof stored === 'number') {
-      hotAlbumSize.value = stored
+    await saveImageCdnSetting(cdnPayload)
+
+    const feedOut = await saveFeedPageSetting(feedRaw)
+    const storedFeed = feedOut?.feedPageSize
+    if (typeof storedFeed === 'number') {
+      feedPageSize.value = storedFeed
     }
-    hotSavedHint.value = '已保存'
+
+    const hotOut = await saveHotAlbumSizeSetting(hotRaw)
+    const storedHot = hotOut?.hotAlbumSize
+    if (typeof storedHot === 'number') {
+      hotAlbumSize.value = storedHot
+    }
+
+    const siteOut = await saveSiteHeaderSetting({
+      topTitle: siteTopTitle.value,
+      topDescription: siteTopDescription.value,
+      headerScript: siteHeaderScript.value
+    })
+    if (typeof siteOut?.topTitle === 'string') siteTopTitle.value = siteOut.topTitle
+    if (typeof siteOut?.topDescription === 'string') siteTopDescription.value = siteOut.topDescription
+    if (typeof siteOut?.headerScript === 'string') siteHeaderScript.value = siteOut.headerScript
+
+    saveOkHint.value = '已全部保存'
   } catch (e) {
-    hotError.value = e?.response?.data?.message || e?.message || '保存失败'
+    saveError.value = errMsg(e)
   } finally {
-    savingHot.value = false
+    saving.value = false
   }
 }
 </script>
@@ -172,6 +188,7 @@ const onSaveHotAlbumSize = async () => {
   <AdminLayout :loading="loading">
     <article class="panel full">
       <h2>系统参数配置</h2>
+      <p v-if="loadError" class="err">{{ loadError }}</p>
 
       <section class="block">
         <h3>图片 CDN</h3>
@@ -195,16 +212,10 @@ const onSaveHotAlbumSize = async () => {
             v-model="cdnDomain"
             class="cdn-input"
             placeholder="例如：https://img.example.com 或 img.example.com"
-            @update:model-value="cdnSavedHint = ''"
+            @update:model-value="clearSaveFeedback"
           />
           <p class="field-hint">可只填域名，将自动补全为 <code>https://</code>；保存后访客端与后台预览均使用该前缀。</p>
         </div>
-
-        <div class="actions">
-          <Button label="保存 CDN 设置" icon="pi pi-check" :loading="savingCdn" :disabled="loading" @click="onSaveCdn" />
-          <span v-if="cdnSavedHint" class="ok">{{ cdnSavedHint }}</span>
-        </div>
-        <p v-if="cdnError" class="err">{{ cdnError }}</p>
 
         <div class="preview-block">
           <span class="preview-label">示例拼接结果</span>
@@ -214,7 +225,7 @@ const onSaveHotAlbumSize = async () => {
 
       <section class="block block-spaced">
         <h3>访客分页</h3>
-        <p class="hint">控制访客端「名人榜」瀑布流每次向后端请求的相册条数（1～100），并用于触底自动加载更多。</p>
+        <p class="hint">控制访客端瀑布流每次向后端请求的相册条数（1～100），并用于触底自动加载更多。</p>
         <div class="cdn-field">
           <label class="field-label">每页条数</label>
           <InputText
@@ -223,14 +234,9 @@ const onSaveHotAlbumSize = async () => {
             class="cdn-input feed-page-input"
             :min="1"
             :max="100"
-            @update:model-value="feedSavedHint = ''"
+            @update:model-value="clearSaveFeedback"
           />
         </div>
-        <div class="actions">
-          <Button label="保存分页设置" icon="pi pi-save" :loading="savingFeed" :disabled="loading" @click="onSaveFeedPage" />
-          <span v-if="feedSavedHint" class="ok">{{ feedSavedHint }}</span>
-        </div>
-        <p v-if="feedError" class="err">{{ feedError }}</p>
       </section>
 
       <section class="block block-spaced">
@@ -244,14 +250,65 @@ const onSaveHotAlbumSize = async () => {
             class="cdn-input feed-page-input"
             :min="1"
             :max="30"
-            @update:model-value="hotSavedHint = ''"
+            @update:model-value="clearSaveFeedback"
           />
         </div>
-        <div class="actions">
-          <Button label="保存热门设置" icon="pi pi-save" :loading="savingHot" :disabled="loading" @click="onSaveHotAlbumSize" />
-          <span v-if="hotSavedHint" class="ok">{{ hotSavedHint }}</span>
+      </section>
+
+      <section class="block block-spaced">
+        <h3>访客首页顶部</h3>
+        <p class="hint">
+          配置访客端首页顶部标题与副标题；「Header 脚本」会注入到访客站点 <code>&lt;head&gt;</code>（支持完整
+          <code>&lt;script&gt;</code> 标签或纯 JS 片段，仅管理员可编辑，请谨慎填写）。
+        </p>
+        <div class="cdn-field">
+          <label class="field-label">顶部标题</label>
+          <InputText
+            v-model="siteTopTitle"
+            class="cdn-input"
+            placeholder="例如：相册"
+            maxlength="200"
+            @update:model-value="clearSaveFeedback"
+          />
         </div>
-        <p v-if="hotError" class="err">{{ hotError }}</p>
+        <div class="cdn-field">
+          <label class="field-label">顶部描述</label>
+          <Textarea
+            v-model="siteTopDescription"
+            class="cdn-input textarea-input"
+            rows="3"
+            auto-resize
+            placeholder="例如：记录生活，珍藏美好"
+            maxlength="2000"
+            @update:model-value="clearSaveFeedback"
+          />
+        </div>
+        <div class="cdn-field">
+          <label class="field-label">Header 脚本内容</label>
+          <Textarea
+            v-model="siteHeaderScript"
+            class="cdn-input textarea-input textarea-script"
+            rows="8"
+            auto-resize
+            placeholder="例如：统计脚本或 &lt;script src=&quot;...&quot;&gt;&lt;/script&gt;"
+            @update:model-value="clearSaveFeedback"
+          />
+        </div>
+      </section>
+
+      <section class="block block-spaced save-all-block">
+        <p v-if="saveError" class="err">{{ saveError }}</p>
+        <div class="actions">
+          <Button
+            label="保存全部配置"
+            icon="pi pi-save"
+            :loading="saving"
+            :disabled="loading"
+            @click="onSaveAll"
+          />
+          <span v-if="saveOkHint" class="ok">{{ saveOkHint }}</span>
+        </div>
+        <p class="field-hint save-all-hint">将依次保存 CDN、分页、热门数量、首页顶部与 Header 脚本；任一步失败则中止并提示错误。</p>
       </section>
     </article>
   </AdminLayout>
@@ -285,6 +342,15 @@ const onSaveHotAlbumSize = async () => {
   margin: 0 0 12px;
   font-size: 1rem;
 }
+.save-all-block {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 2px solid #cbd5e1;
+}
+.save-all-hint {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
 .mode-row {
   display: flex;
   flex-wrap: wrap;
@@ -316,6 +382,16 @@ const onSaveHotAlbumSize = async () => {
 .feed-page-input {
   max-width: 160px;
 }
+.textarea-input {
+  max-width: 640px;
+  min-height: 72px;
+  resize: vertical;
+}
+.textarea-script {
+  min-height: 160px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
 .field-hint {
   margin: 8px 0 0;
   font-size: 12px;
@@ -332,7 +408,7 @@ const onSaveHotAlbumSize = async () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 .ok {
   font-size: 13px;

@@ -5,6 +5,7 @@ import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
+import LazyImage from '../components/LazyImage.vue'
 import { fetchAlbumDetail, reportAlbumView, toAssetUrl } from '../api/images'
 
 const route = useRoute()
@@ -79,7 +80,11 @@ onMounted(loadDetail)
       >
         <swiper-slide v-for="(image, idx) in images" :key="image.id || `${image.url}-${idx}`">
           <article class="image-card">
-            <img :src="toAssetUrl(image.url)" :alt="image.originalName || `图片${idx + 1}`" />
+            <LazyImage
+              layout="block"
+              :src="toAssetUrl(image.url)"
+              :alt="image.originalName || `图片${idx + 1}`"
+            />
             <p>{{ image.originalName || `图片${idx + 1}` }}</p>
           </article>
         </swiper-slide>
@@ -150,10 +155,8 @@ onMounted(loadDetail)
   background: #fff;
 }
 
-.image-card img {
-  display: block;
-  width: 100%;
-  height: auto;
+.image-card :deep(.lazy-img) {
+  border-radius: 12px 12px 0 0;
 }
 
 .image-card p {

@@ -63,3 +63,13 @@ export async function saveHotAlbumSizeSetting(hotAlbumSize) {
   const { data } = await http.put('/admin/settings/hot-album-size', { hotAlbumSize })
   return data?.data ?? {}
 }
+
+export async function fetchSiteHeaderSetting() {
+  const { data } = await http.get('/admin/settings/site-header')
+  return data?.data ?? { topTitle: '', topDescription: '', headerScript: '' }
+}
+
+export async function saveSiteHeaderSetting(payload) {
+  const { data } = await http.put('/admin/settings/site-header', payload)
+  return data?.data ?? {}
+}
