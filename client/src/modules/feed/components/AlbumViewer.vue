@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { marked } from 'marked'
+import { renderAlbumDescription } from '../../../utils/renderDescription'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import 'swiper/css'
 import { toAssetUrl } from '../../../api/images'
@@ -35,11 +35,7 @@ const props = defineProps({
 
 const emit = defineEmits(['back'])
 
-const markdownDescription = computed(() =>
-  marked.parse(props.description || '', {
-    breaks: true
-  })
-)
+const markdownDescription = computed(() => renderAlbumDescription(props.description))
 </script>
 
 <template>

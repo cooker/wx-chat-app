@@ -81,13 +81,51 @@
 }
 
 .hot-strip {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(120px, 1fr);
-  gap: 10px;
+  --hot-gap: 10px;
+
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: var(--hot-gap);
+  padding-bottom: 4px;
+}
+
+/* ≤2 个：铺满当前行，不横滑 */
+.hot-strip--fit {
+  overflow: hidden;
+  touch-action: auto;
+}
+
+.hot-strip--fit .hot-card {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* >2 个：2.5 屏横滑，露出半张提示可继续滑 */
+.hot-strip--peek {
+  --hot-visible-count: 2.5;
+  --hot-gap-total: calc((var(--hot-visible-count) - 0.5) * var(--hot-gap));
+
+  margin-inline: -12px;
+  padding-inline: 12px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 12px;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   scrollbar-width: none;
+}
+
+.hot-strip--peek::-webkit-scrollbar {
+  display: none;
+}
+
+.hot-strip--peek .hot-card {
+  flex: 0 0 calc((100cqw - var(--hot-gap-total)) / var(--hot-visible-count));
+  scroll-snap-align: start;
 }
 
 .hot-empty {
@@ -96,18 +134,15 @@
   padding: 10px 2px;
 }
 
-.hot-strip::-webkit-scrollbar {
-  display: none;
-}
-
 .hot-card {
   position: relative;
-  height: 120px;
+  height: 132px;
   border: none;
   border-radius: 14px;
   overflow: hidden;
   padding: 0;
   text-align: left;
+  cursor: pointer;
 }
 
 .hot-card-cover {

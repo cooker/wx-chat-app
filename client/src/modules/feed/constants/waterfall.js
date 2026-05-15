@@ -9,6 +9,12 @@ export const WATERFALL_LAYOUT = {
   padding: 6
 }
 
+/** 卡片封面默认高宽比（与 LazyImage cover 一致） */
+export const CARD_COVER_RATIO_DEFAULT = 1.18
+
+/** 卡片标题区占用高度（padding + 标题最多两行 + meta），供虚拟列表算高 */
+export const CARD_BODY_EXTRA = 66
+
 export const SKELETON_ITEMS = Array.from({ length: 12 }).map((_, index) => ({
   id: `skeleton-${index}`,
   ratio: 1 + ((index % 4) * 0.15)

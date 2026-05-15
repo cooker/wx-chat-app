@@ -1,5 +1,6 @@
 <script setup>
 import LazyImage from '../../../components/LazyImage.vue'
+import { CARD_COVER_RATIO_DEFAULT } from '../constants/waterfall'
 
 defineProps({
   item: {
@@ -13,7 +14,13 @@ const emit = defineEmits(['select'])
 
 <template>
   <article class="card" @click="emit('select', item.id)">
-    <LazyImage v-if="item.coverDisplay" layout="cover" :src="item.coverDisplay" :alt="item.title" />
+    <LazyImage
+      v-if="item.coverDisplay"
+      layout="cover"
+      :cover-ratio="item.ratio || CARD_COVER_RATIO_DEFAULT"
+      :src="item.coverDisplay"
+      :alt="item.title"
+    />
     <div class="card-body">
       <h3 class="card-title">{{ item.title }}</h3>
       <div class="card-meta">

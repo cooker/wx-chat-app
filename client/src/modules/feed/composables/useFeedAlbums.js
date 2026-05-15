@@ -7,7 +7,7 @@ import {
   toOriginAssetUrl,
   getFeedPageSize
 } from '../../../api/images'
-import { SKELETON_ITEMS } from '../constants/waterfall'
+import { CARD_BODY_EXTRA, CARD_COVER_RATIO_DEFAULT, SKELETON_ITEMS } from '../constants/waterfall'
 
 export function useFeedAlbums() {
   const loading = ref(false)
@@ -38,8 +38,14 @@ export function useFeedAlbums() {
     }))
   )
 
-  const calcItemHeight = (item, width) => Math.round(width * (item.ratio || 1.2))
-  const calcSkeletonHeight = (item, width) => Math.round(width * (item.ratio || 1.1))
+  const calcItemHeight = (item, width) => {
+    const coverRatio = item.ratio || CARD_COVER_RATIO_DEFAULT
+    return Math.round(width * coverRatio) + CARD_BODY_EXTRA
+  }
+  const calcSkeletonHeight = (item, width) => {
+    const coverRatio = item.ratio || CARD_COVER_RATIO_DEFAULT
+    return Math.round(width * coverRatio) + CARD_BODY_EXTRA
+  }
 
   const dedupeById = (items) => {
     const map = new Map()

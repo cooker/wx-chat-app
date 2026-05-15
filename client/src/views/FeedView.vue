@@ -92,17 +92,28 @@ const recommendAlbums = computed(() => {
   )
 })
 
+function formatHotPhotoText(item) {
+  const views = Number(item?.views)
+  const count = item?.imageCount || 0
+  if (Number.isFinite(views) && views > 0) {
+    return `${views}次访问 · ${count}张`
+  }
+  return `${count}张`
+}
+
 async function loadHotAlbums() {
   hotLoading.value = true
   try {
     const size = getHotAlbumSize()
     const { data } = await fetchHotAlbums({ size })
     const items = Array.isArray(data?.data?.items) ? data.data.items : []
-    hotAlbums.value = items.map((item) => ({
-      ...item,
-      coverDisplay: toAssetUrl(item.coverUrl),
-      photoText: `${item.imageCount || 0}张`
-    }))
+    hotAlbums.value = items
+      .map((item) => ({
+        ...item,
+        coverDisplay: toAssetUrl(item.coverUrl),
+        photoText: formatHotPhotoText(item)
+      }))
+      .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
   } finally {
     hotLoading.value = false
   }
@@ -316,12 +327,19 @@ onBeforeUnmount(() => {
       </div>
       <div v-if="hotLoading && hotAlbums.length === 0" class="hot-empty">热门加载中...</div>
       <div v-else-if="hotAlbums.length === 0" class="hot-empty">暂无热门相册</div>
-      <div v-else class="hot-strip">
+      <div
+        v-else
+        class="hot-strip"
+        :class="hotAlbums.length > 2 ? 'hot-strip--peek' : 'hot-strip--fit'"
+        role="list"
+        :aria-label="hotAlbums.length > 2 ? '热门相册，可左右滑动浏览' : '热门相册'"
+      >
         <button
           v-for="album in hotAlbums"
           :key="`hot-${album.id}`"
           type="button"
           class="hot-card"
+          role="listitem"
           @click="goAlbumDetail(album.id)"
         >
           <LazyImage layout="fill" img-class="hot-card-cover" :src="album.coverDisplay" :alt="album.title" />
@@ -349,6 +367,7 @@ onBeforeUnmount(() => {
           <VirtualWaterfall
             :items="skeletonItems"
             row-key="id"
+            :preload-screen-count="[1, 2]"
             :item-min-width="WATERFALL_LAYOUT.itemMinWidth"
             :min-column-count="WATERFALL_LAYOUT.minColumnCount"
             :max-column-count="WATERFALL_LAYOUT.maxColumnCount"
@@ -359,6 +378,10 @@ onBeforeUnmount(() => {
             <template #default>
               <article class="card skeleton-card">
                 <div class="skeleton-cover"></div>
+                <div class="card-body">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
               </article>
             </template>
           </VirtualWaterfall>
@@ -370,6 +393,7 @@ onBeforeUnmount(() => {
             :key="waterfallModeKey"
             :items="recommendAlbums"
             row-key="id"
+            :preload-screen-count="[1, 2]"
             :item-min-width="WATERFALL_LAYOUT.itemMinWidth"
             :min-column-count="WATERFALL_LAYOUT.minColumnCount"
             :max-column-count="WATERFALL_LAYOUT.maxColumnCount"

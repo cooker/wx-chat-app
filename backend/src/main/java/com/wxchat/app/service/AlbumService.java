@@ -77,11 +77,14 @@ public class AlbumService {
                                COALESCE(a.cover_url, '') AS cover_url,
                                COALESCE(a.image_folder, '') AS image_folder,
                                a.created_at, a.updated_at,
-                               COUNT(e.id) AS views
+                               stats.view_count AS views
                         FROM albums a
-                        LEFT JOIN access_events e ON e.album_id = a.id
-                        GROUP BY a.id, a.title, a.description, a.cover_url, a.image_folder, a.created_at, a.updated_at
-                        ORDER BY views DESC, a.updated_at DESC
+                        INNER JOIN (
+                            SELECT album_id, COUNT(*) AS view_count
+                            FROM access_events
+                            GROUP BY album_id
+                        ) stats ON stats.album_id = a.id
+                        ORDER BY stats.view_count DESC, a.updated_at DESC
                         LIMIT ?
                         """,
                 (rs, rowNum) -> Map.of(

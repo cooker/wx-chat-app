@@ -1,5 +1,8 @@
 .card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   border-radius: 14px;
   background: #fff;
   overflow: hidden;
@@ -15,6 +18,7 @@
 }
 
 .card-body {
+  flex-shrink: 0;
   padding: 8px 9px 10px;
 }
 

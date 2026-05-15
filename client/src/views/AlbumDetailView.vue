@@ -7,6 +7,7 @@ import 'swiper/css'
 import 'swiper/css/pagination'
 import LazyImage from '../components/LazyImage.vue'
 import { fetchAlbumDetail, reportAlbumView, toAssetUrl } from '../api/images'
+import { renderAlbumDescription } from '../utils/renderDescription'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +18,8 @@ const swiperModules = [Pagination]
 
 const albumId = computed(() => Number(route.params.id))
 const images = computed(() => album.value?.images || [])
+const hasDescription = computed(() => Boolean(album.value?.description?.trim()))
+const descriptionHtml = computed(() => renderAlbumDescription(album.value?.description))
 
 function getVisitorId() {
   const key = 'wx-chat-visitor-id'
@@ -68,7 +71,12 @@ onMounted(loadDetail)
     <template v-else>
       <section class="meta">
         <h2>{{ album?.title || '未命名相册' }}</h2>
-        <p>{{ album?.description || '暂无描述' }}</p>
+        <article
+          v-if="hasDescription"
+          class="meta-description markdown-body markdown-body--page"
+          v-html="descriptionHtml"
+        />
+        <p v-else class="meta-empty">暂无描述</p>
       </section>
       <swiper
         v-if="images.length > 0"
@@ -137,10 +145,18 @@ onMounted(loadDetail)
   font-size: 22px;
 }
 
-.meta p {
+.meta-empty {
   margin: 8px 0 0;
-  color: #64748b;
+  color: #94a3b8;
   line-height: 1.5;
+}
+
+.meta-description {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
 }
 
 .album-swiper {
