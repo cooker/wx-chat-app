@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   src: {
@@ -31,30 +31,52 @@ const props = defineProps({
 const loaded = ref(false)
 const failed = ref(false)
 const imgRef = ref(null)
+const rootRef = ref(null)
+let observer = null
+
+/** 虚拟瀑布流已做视口裁剪，再用原生 lazy 易与回收/解码打架；封面强制 eager */
+const imgLoadingAttr = computed(() => (props.layout === 'cover' ? 'eager' : 'lazy'))
 
 function resetState() {
   loaded.value = false
   failed.value = false
 }
 
+async function tryReveal() {
+  await nextTick()
+  const el = imgRef.value
+  if (!el || !props.src || failed.value) return
+
+  if (el.complete && el.naturalWidth > 0) {
+    loaded.value = true
+    return
+  }
+
+  if (typeof el.decode === 'function') {
+    try {
+      await el.decode()
+    } catch {
+      // 解码失败仍等 load / error
+    }
+  }
+  if (el.complete && el.naturalWidth > 0) {
+    loaded.value = true
+  }
+}
+
+function scheduleTryReveal() {
+  requestAnimationFrame(() => {
+    void tryReveal()
+  })
+}
+
 watch(
   () => props.src,
   () => {
     resetState()
-    syncCachedDecode()
+    scheduleTryReveal()
   }
 )
-
-function syncCachedDecode() {
-  nextTick(() => {
-    const el = imgRef.value
-    if (el?.complete && el.naturalWidth > 0) {
-      loaded.value = true
-    }
-  })
-}
-
-onMounted(syncCachedDecode)
 
 function onLoad() {
   loaded.value = true
@@ -64,10 +86,40 @@ function onError() {
   failed.value = true
   loaded.value = true
 }
+
+function bindIntersection() {
+  if (typeof IntersectionObserver === 'undefined') return
+  observer?.disconnect()
+  const root = rootRef.value
+  if (!root) return
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        scheduleTryReveal()
+      }
+    },
+    { root: null, rootMargin: '240px 0px 400px 0px', threshold: 0 }
+  )
+  observer.observe(root)
+}
+
+onMounted(() => {
+  scheduleTryReveal()
+  nextTick(() => {
+    bindIntersection()
+    scheduleTryReveal()
+  })
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
+})
 </script>
 
 <template>
   <div
+    ref="rootRef"
     class="lazy-img"
     :class="[
       `lazy-img--${layout}`,
@@ -82,7 +134,7 @@ function onError() {
       :class="imgClass"
       :src="src"
       :alt="alt"
-      loading="lazy"
+      :loading="imgLoadingAttr"
       decoding="async"
       fetchpriority="low"
       @load="onLoad"
@@ -109,8 +161,7 @@ function onError() {
 }
 
 .lazy-img--is-loaded .lazy-img__placeholder {
-  opacity: 0;
-  transition: opacity 0.28s ease;
+  display: none;
 }
 
 .lazy-img--is-loaded .lazy-img__img {
@@ -119,8 +170,10 @@ function onError() {
 
 .lazy-img__img {
   display: block;
+  position: relative;
+  z-index: 2;
   opacity: 0;
-  transition: opacity 0.28s ease;
+  transition: opacity 0.22s ease;
 }
 
 .lazy-img--cover {
